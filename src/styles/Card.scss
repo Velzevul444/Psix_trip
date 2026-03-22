@@ -1,0 +1,224 @@
+.card-wrapper {
+  width: 320px;
+  height: 480px;
+  position: relative;
+}
+
+.card-front {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.card-frame {
+  position: absolute;
+  inset: 8px;
+  border: 3px solid;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.card-header {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .card-rarity-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    margin: 0 auto;
+    display: block;
+    width: fit-content;
+  }
+}
+
+.card-image-container {
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+
+  .card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    background: linear-gradient(145deg, #2a2a4e 0%, #1a1a2e 100%);
+  }
+
+  .card-image-shine {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+                    135deg,
+                    transparent 40%,
+                    rgba(255, 255, 255, 0.1) 50%,
+                    transparent 60%
+    );
+    pointer-events: none;
+  }
+}
+
+.card-body {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+
+  .card-description {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.card-footer {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .view-count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #aaa;
+
+    .eye-icon {
+      font-size: 1rem;
+    }
+  }
+
+  .wiki-link {
+    color: #38ef7d;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #FFD700;
+    }
+  }
+}
+
+.card-glow {
+  position: absolute;
+  inset: -10px;
+  border-radius: 20px;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: -1;
+}
+
+// Редкости - специальные эффекты
+.card-front {
+  &.rarity-divine {
+    .card-frame { animation: divine-pulse 2s ease-in-out infinite; }
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
+      border-radius: 18px;
+      z-index: -1;
+      animation: rotate-gradient 3s linear infinite;
+    }
+  }
+
+  &.rarity-legendary {
+    .card-frame { animation: legendary-pulse 2s ease-in-out infinite; }
+  }
+
+  &.rarity-mythic {
+    .card-frame { animation: mythic-pulse 2s ease-in-out infinite; }
+  }
+
+  &.rarity-epic {
+    .card-frame { animation: epic-pulse 2s ease-in-out infinite; }
+  }
+
+  &.rarity-superRare {
+    .card-frame { animation: super-pulse 2s ease-in-out infinite; }
+  }
+}
+
+@keyframes divine-pulse {
+  0%, 100% { box-shadow: 0 0 20px #FFD700, 0 0 40px #FFA500; }
+  50% { box-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500, 0 0 80px #FFD700; }
+}
+
+@keyframes legendary-pulse {
+  0%, 100% { box-shadow: 0 0 15px #FF6B35; }
+  50% { box-shadow: 0 0 25px #FF6B35, 0 0 50px #FF4500; }
+}
+
+@keyframes mythic-pulse {
+  0%, 100% { box-shadow: 0 0 12px #9333EA; }
+  50% { box-shadow: 0 0 20px #9333EA, 0 0 40px #7C3AED; }
+}
+
+@keyframes epic-pulse {
+  0%, 100% { box-shadow: 0 0 10px #EC4899; }
+  50% { box-shadow: 0 0 15px #EC4899, 0 0 30px #DB2777; }
+}
+
+@keyframes super-pulse {
+  0%, 100% { box-shadow: 0 0 10px #3B82F6; }
+  50% { box-shadow: 0 0 15px #3B82F6, 0 0 30px #2563EB; }
+}
+
+@keyframes rotate-gradient {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+// Scrollbar
+.card-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.card-body::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.card-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
