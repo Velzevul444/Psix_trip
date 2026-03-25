@@ -1,27 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Pack from './components/Pack';
 import Card from './components/Card';
 import CardStats from './components/CardStats';
 import './styles/App.scss';
+import {
+  buildRarityLevels,
+  DEFAULT_RARITY_THRESHOLDS,
+  getRarityByViewCount,
+  RARITY_ORDER
+} from '../shared/rarity.mjs';
 
-const RARITY_LEVELS = {
-  divine: { name: 'Божественная', min: 10000000, max: 15000000, color: '#FFD700', glow: '0 0 30px #FFD700, 0 0 60px #FFA500' },
-  legendary: { name: 'Легендарная', min: 5000000, max: 9999999, color: '#FF6B35', glow: '0 0 25px #FF6B35, 0 0 50px #FF4500' },
-  mythic: { name: 'Мифическая', min: 1000000, max: 4999999, color: '#9333EA', glow: '0 0 20px #9333EA, 0 0 40px #7C3AED' },
-  epic: { name: 'Эпическая', min: 500000, max: 999999, color: '#EC4899', glow: '0 0 15px #EC4899, 0 0 30px #DB2777' },
-  superRare: { name: 'Сверхредкая', min: 100000, max: 499999, color: '#3B82F6', glow: '0 0 15px #3B82F6, 0 0 30px #2563EB' },
-  rare: { name: 'Редкая', min: 10000, max: 99999, color: '#10B981', glow: '0 0 10px #10B981, 0 0 20px #059669' },
-  common: { name: 'Обычная', min: 1000, max: 9999, color: '#6B7280', glow: '0 0 5px #6B7280' }
-};
-
-const RARITY_ORDER = ['divine', 'legendary', 'mythic', 'epic', 'superRare', 'rare', 'common'];
-const PAGEVIEWS_WINDOW_DAYS = 30;
 const PACK_SIZE = 5;
-const RANDOM_TITLES_BATCH = 50;
-const RANDOM_FETCH_ROUNDS = 4;
+const PACK_FETCH_BATCH = PACK_SIZE * 4;
+const PACK_FETCH_ATTEMPTS = 4;
 const RECENT_TITLES_LIMIT = 250;
-const PAGEVIEWS_RETRY_DELAYS_MS = [250, 600, 1200];
 const NEXT_PACK_DELAY_MS = 1200;
+const TITLE_PROCESS_CONCURRENCY = 6;
+const PACK_API_ENDPOINT = import.meta.env.VITE_PACK_API_ENDPOINT || '/api/pack';
+const FALLBACK_EXTRACT = 'Краткое описание для этой статьи не найдено.';
 const STAT_RANGES_BY_RARITY = {
   common: {
     hp: [40, 140],
@@ -81,10 +77,6 @@ const STAT_RANGES_BY_RARITY = {
   }
 };
 
-function formatPageviewsDate(date) {
-  return date.toISOString().slice(0, 10).replace(/-/g, '');
-}
-
 function normalizeTitle(title) {
   return title.replace(/_/g, ' ').trim().toLowerCase();
 }
@@ -108,77 +100,27 @@ function generateCardStats(rarity) {
   );
 }
 
-function getPageviewsRange(days = PAGEVIEWS_WINDOW_DAYS) {
-  const endDate = new Date();
-  endDate.setUTCDate(endDate.getUTCDate() - 1);
-
-  const startDate = new Date(endDate);
-  startDate.setUTCDate(startDate.getUTCDate() - (days - 1));
-
-  return {
-    start: formatPageviewsDate(startDate),
-    end: formatPageviewsDate(endDate)
-  };
+function buildWikiUrl(title) {
+  return `https://ru.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
 }
 
-function getRarityByViewCount(viewCount) {
-  for (const rarity of RARITY_ORDER) {
-    if (viewCount >= RARITY_LEVELS[rarity].min) {
-      return rarity;
-    }
-  }
-
-  return 'common';
-}
-
-async function fetchArticleViewCount(title) {
-  const { start, end } = getPageviewsRange();
-  const article = encodeURIComponent(title.replace(/\s+/g, '_'));
-
-  for (let attempt = 0; attempt <= PAGEVIEWS_RETRY_DELAYS_MS.length; attempt += 1) {
-    try {
-      const response = await fetch(
-        `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/ru.wikipedia/all-access/user/${article}/daily/${start}/${end}`
-      );
-
-      if (response.ok) {
-        const payload = await response.json();
-        if (!payload.items || payload.items.length === 0) return 0;
-        return payload.items.reduce((sum, day) => sum + day.views, 0);
-      }
-
-      if (response.status !== 429 || attempt === PAGEVIEWS_RETRY_DELAYS_MS.length) {
-        return null;
-      }
-    } catch (error) {
-      if (attempt === PAGEVIEWS_RETRY_DELAYS_MS.length) {
-        return null;
-      }
-    }
-
-    await sleep(PAGEVIEWS_RETRY_DELAYS_MS[attempt]);
-  }
-
-  return null;
-}
-
-async function fetchRandomArticleTitles(limit = RANDOM_TITLES_BATCH) {
-  const params = new URLSearchParams({
-    action: 'query',
-    list: 'random',
-    rnnamespace: '0',
-    rnlimit: String(limit),
-    format: 'json',
-    origin: '*'
+async function fetchPackCandidates(count, excludeTitles) {
+  const response = await fetch(PACK_API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      count,
+      excludeTitles
+    })
   });
 
-  const response = await fetch(`https://ru.wikipedia.org/w/api.php?${params.toString()}`);
-  if (!response.ok) return [];
+  if (!response.ok) {
+    throw new Error(`Failed to load pack candidates: ${response.status}`);
+  }
 
-  const payload = await response.json();
-  if (!payload.query?.random) return [];
-
-  return payload.query.random.map((item) => item.title).filter(Boolean);
+  return response.json();
 }
 
 async function fetchPageSummary(title) {
@@ -186,10 +128,14 @@ async function fetchPageSummary(title) {
     `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
   );
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    return null;
+  }
 
   const data = await response.json();
-  if (data.type !== 'standard') return null;
+  if (data.type && data.type !== 'standard') {
+    return null;
+  }
 
   return data;
 }
@@ -201,7 +147,9 @@ function App() {
   const [currentCardIndex, setCurrentCardIndex] = useState(-1);
   const [isFetchingCards, setIsFetchingCards] = useState(false);
   const [isPackCooldown, setIsPackCooldown] = useState(false);
+  const [rarityLevels, setRarityLevels] = useState(() => buildRarityLevels(DEFAULT_RARITY_THRESHOLDS));
   const initialLoadDoneRef = useRef(false);
+  const summaryCacheRef = useRef(new Map());
   const recentTitlesRef = useRef({
     set: new Set(),
     queue: []
@@ -220,14 +168,61 @@ function App() {
     if (storage.set.has(key)) return;
 
     storage.set.add(key);
-    storage.queue.push(key);
+    storage.queue.push({ key, title });
 
     if (storage.queue.length > RECENT_TITLES_LIMIT) {
       const oldest = storage.queue.shift();
       if (oldest) {
-        storage.set.delete(oldest);
+        storage.set.delete(oldest.key);
       }
     }
+  };
+
+  const getRecentTitles = () => recentTitlesRef.current.queue.map((entry) => entry.title);
+
+  const getCachedPageSummary = async (title) => {
+    const key = normalizeTitle(title);
+    const cache = summaryCacheRef.current;
+
+    if (!cache.has(key)) {
+      const request = fetchPageSummary(title)
+        .then((data) => {
+          if (data) {
+            cache.set(normalizeTitle(data.title), Promise.resolve(data));
+          } else {
+            cache.delete(key);
+          }
+
+          return data;
+        })
+        .catch(() => {
+          cache.delete(key);
+          return null;
+        });
+
+      cache.set(key, request);
+    }
+
+    return cache.get(key);
+  };
+
+  const processCardData = (article, summary, activeRarityLevels) => {
+    const viewCount = Number.isFinite(article.viewCount) && article.viewCount >= 0 ? article.viewCount : 0;
+    const rarity = getRarityByViewCount(viewCount, activeRarityLevels);
+    const rarityData = activeRarityLevels[rarity];
+    const title = summary?.title || article.title;
+
+    return {
+      id: `${article.id}-${normalizeTitle(title)}`,
+      title,
+      extract: summary?.extract || FALLBACK_EXTRACT,
+      image: summary?.thumbnail?.source || null,
+      url: summary?.content_urls?.desktop?.page || buildWikiUrl(title),
+      viewCount,
+      rarity,
+      stats: generateCardStats(rarity),
+      ...rarityData
+    };
   };
 
   const fetchCards = async () => {
@@ -237,34 +232,53 @@ function App() {
     try {
       const blockedTitles = new Set(recentTitlesRef.current.set);
       const fetchedCards = [];
+      let attempts = 0;
+      let activeRarityLevels = rarityLevels;
 
-      for (let round = 0; round < RANDOM_FETCH_ROUNDS && fetchedCards.length < PACK_SIZE; round += 1) {
-        const randomTitles = await fetchRandomArticleTitles();
+      while (fetchedCards.length < PACK_SIZE && attempts < PACK_FETCH_ATTEMPTS) {
+        attempts += 1;
 
-        for (const randomTitle of randomTitles) {
-          if (fetchedCards.length >= PACK_SIZE) break;
+        const payload = await fetchPackCandidates(PACK_FETCH_BATCH, getRecentTitles());
+        if (payload.rarityLevels) {
+          activeRarityLevels = buildRarityLevels(payload.rarityLevels);
+          setRarityLevels(activeRarityLevels);
+        }
 
-          const normalizedRandomTitle = normalizeTitle(randomTitle);
-          if (blockedTitles.has(normalizedRandomTitle)) continue;
-          blockedTitles.add(normalizedRandomTitle);
+        const candidates = Array.isArray(payload.cards) ? payload.cards : [];
+        const candidatesToProcess = [];
 
-          try {
-            const data = await fetchPageSummary(randomTitle);
-            if (!data) continue;
+        for (const candidate of candidates) {
+          const rawKey = normalizeTitle(candidate.title);
+          if (blockedTitles.has(rawKey)) continue;
+          blockedTitles.add(rawKey);
+          candidatesToProcess.push(candidate);
+        }
 
-            const normalizedSummaryTitle = normalizeTitle(data.title);
-            if (blockedTitles.has(normalizedSummaryTitle) && normalizedSummaryTitle !== normalizedRandomTitle) {
+        for (let index = 0; index < candidatesToProcess.length && fetchedCards.length < PACK_SIZE; index += TITLE_PROCESS_CONCURRENCY) {
+          const batch = candidatesToProcess.slice(index, index + TITLE_PROCESS_CONCURRENCY);
+          const hydratedBatch = await Promise.all(
+            batch.map(async (article) => {
+              const summary = await getCachedPageSummary(article.title);
+              return {
+                article,
+                card: processCardData(article, summary, activeRarityLevels)
+              };
+            })
+          );
+
+          for (const { article, card } of hydratedBatch) {
+            if (fetchedCards.length >= PACK_SIZE) break;
+
+            const rawKey = normalizeTitle(article.title);
+            const finalKey = normalizeTitle(card.title);
+
+            if (blockedTitles.has(finalKey) && finalKey !== rawKey) {
               continue;
             }
-            blockedTitles.add(normalizedSummaryTitle);
 
-            const viewCount = await fetchArticleViewCount(data.title);
-            if (viewCount === null) continue;
-
-            fetchedCards.push(processCardData(data, viewCount));
-            rememberTitle(data.title);
-          } catch (e) {
-            continue;
+            blockedTitles.add(finalKey);
+            fetchedCards.push(card);
+            rememberTitle(card.title);
           }
         }
       }
@@ -275,24 +289,6 @@ function App() {
     } finally {
       setIsFetchingCards(false);
     }
-  };
-
-  const processCardData = (data, rawViewCount) => {
-    const viewCount = Number.isFinite(rawViewCount) && rawViewCount >= 0 ? rawViewCount : 0;
-    const rarity = getRarityByViewCount(viewCount);
-    const rarityData = RARITY_LEVELS[rarity];
-
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      title: data.title,
-      extract: data.extract,
-      image: data.thumbnail?.source || null,
-      url: data.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${data.title}`,
-      viewCount,
-      rarity,
-      stats: generateCardStats(rarity),
-      ...rarityData
-    };
   };
 
   const openPack = () => {
@@ -331,12 +327,16 @@ function App() {
     <div className="App">
       <h1 className="title">Wiki Cards</h1>
       <div className="rarity-legend">
-        {Object.entries(RARITY_LEVELS).map(([key, value]) => (
-          <div key={key} className="rarity-item">
-            <div className="rarity-dot" style={{ backgroundColor: value.color, boxShadow: value.glow }}></div>
-            <span>{value.name}</span>
-          </div>
-        ))}
+        {RARITY_ORDER.map((key) => {
+          const value = rarityLevels[key];
+
+          return (
+            <div key={key} className="rarity-item">
+              <div className="rarity-dot" style={{ backgroundColor: value.color, boxShadow: value.glow }}></div>
+              <span>{value.name}</span>
+            </div>
+          );
+        })}
       </div>
 
       {!isOpening ? (
