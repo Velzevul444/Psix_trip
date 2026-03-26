@@ -7,7 +7,8 @@
     "api": "node server/index.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "import:ruwiki": "node scripts/import-ruwiki.mjs"
+    "import:ruwiki": "node scripts/import-ruwiki.mjs",
+    "fill:article-stats": "node scripts/fill-wiki-article-stats.mjs"
   },
   "dependencies": {
     "pg": "^8.16.3",
