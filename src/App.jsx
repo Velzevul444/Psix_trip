@@ -21,10 +21,13 @@ const TITLE_PROCESS_CONCURRENCY = 6;
 const AUTH_STORAGE_KEY = 'wiki-cards-auth-token';
 const ADMIN_SEARCH_LIMIT = 12;
 const ADMIN_SEARCH_MIN_LENGTH = 2;
+const BOSS_TEAM_SEARCH_LIMIT = 24;
+const BOSS_TEAM_SIZE = 5;
 const VIEW_MODES = {
   PACKS: 'packs',
   LIBRARY: 'library',
-  COLLECTION: 'collection'
+  COLLECTION: 'collection',
+  BOSS: 'boss'
 };
 const STAT_LABELS = [
   { key: 'hp', label: 'HP' },
@@ -43,6 +46,10 @@ const AUTH_ME_ENDPOINT = import.meta.env.VITE_AUTH_ME_ENDPOINT || '/api/auth/me'
 const ADMIN_USERS_ENDPOINT = import.meta.env.VITE_ADMIN_USERS_ENDPOINT || '/api/admin/users';
 const ADMIN_GRANT_CARD_ENDPOINT =
   import.meta.env.VITE_ADMIN_GRANT_CARD_ENDPOINT || '/api/admin/grant-card';
+const ADMIN_CHANGE_BOSS_ENDPOINT =
+  import.meta.env.VITE_ADMIN_CHANGE_BOSS_ENDPOINT || '/api/admin/change-boss';
+const BOSS_ENDPOINT = import.meta.env.VITE_BOSS_ENDPOINT || '/api/boss';
+const BOSS_BATTLE_ENDPOINT = import.meta.env.VITE_BOSS_BATTLE_ENDPOINT || '/api/boss/battle';
 const FALLBACK_EXTRACT = 'Краткое описание для этой статьи не найдено.';
 const EMPTY_AUTH_FORM = {
   username: '',
@@ -110,6 +117,10 @@ function resolveArticleStats(article, rarity) {
   }
 
   return generateDeterministicCardStats(rarity, article.id);
+}
+
+function getStatLabel(statKey) {
+  return STAT_LABELS.find((stat) => stat.key === statKey)?.label || statKey;
 }
 
 async function fetchPackCandidates(count, excludeTitles, authToken = '') {
@@ -231,6 +242,59 @@ async function grantCardToUser(userId, articleId, authToken) {
   return data;
 }
 
+async function changeBossArticle(articleId, authToken) {
+  const response = await fetch(ADMIN_CHANGE_BOSS_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`
+    },
+    body: JSON.stringify({
+      articleId
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to change boss: ${response.status}`);
+  }
+
+  return data;
+}
+
+async function fetchCurrentBoss() {
+  const response = await fetch(BOSS_ENDPOINT);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load boss: ${response.status}`);
+  }
+
+  return data;
+}
+
+async function submitBossBattle(articleIds, authToken) {
+  const response = await fetch(BOSS_BATTLE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`
+    },
+    body: JSON.stringify({
+      articleIds
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to start battle: ${response.status}`);
+  }
+
+  return data;
+}
+
 async function fetchPageSummary(title) {
   const response = await fetch(
     `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
@@ -314,6 +378,19 @@ function App() {
   const [authToken, setAuthToken] = useState(() => readStoredAuthToken());
   const [authUser, setAuthUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(() => Boolean(readStoredAuthToken()));
+  const [bossData, setBossData] = useState(null);
+  const [bossDisplayCard, setBossDisplayCard] = useState(null);
+  const [isBossLoading, setIsBossLoading] = useState(false);
+  const [bossError, setBossError] = useState('');
+  const [bossTeamSearchInput, setBossTeamSearchInput] = useState('');
+  const [bossTeamSearchQuery, setBossTeamSearchQuery] = useState('');
+  const [bossTeamCandidates, setBossTeamCandidates] = useState([]);
+  const [isBossTeamLoading, setIsBossTeamLoading] = useState(false);
+  const [bossTeamError, setBossTeamError] = useState('');
+  const [selectedBossTeam, setSelectedBossTeam] = useState([]);
+  const [bossBattleResult, setBossBattleResult] = useState(null);
+  const [bossBattleError, setBossBattleError] = useState('');
+  const [isBossBattleSubmitting, setIsBossBattleSubmitting] = useState(false);
   const [isAdminGrantPanelOpen, setIsAdminGrantPanelOpen] = useState(false);
   const [adminUserSearchInput, setAdminUserSearchInput] = useState('');
   const [adminUserSearchQuery, setAdminUserSearchQuery] = useState('');
@@ -330,14 +407,26 @@ function App() {
   const [isAdminGrantSubmitting, setIsAdminGrantSubmitting] = useState(false);
   const [adminGrantError, setAdminGrantError] = useState('');
   const [adminGrantStatus, setAdminGrantStatus] = useState('');
+  const [isAdminBossPanelOpen, setIsAdminBossPanelOpen] = useState(false);
+  const [adminBossSearchInput, setAdminBossSearchInput] = useState('');
+  const [adminBossSearchQuery, setAdminBossSearchQuery] = useState('');
+  const [adminBossResults, setAdminBossResults] = useState([]);
+  const [selectedAdminBossArticle, setSelectedAdminBossArticle] = useState(null);
+  const [isLoadingAdminBossArticles, setIsLoadingAdminBossArticles] = useState(false);
+  const [adminBossArticlesError, setAdminBossArticlesError] = useState('');
+  const [isAdminBossSubmitting, setIsAdminBossSubmitting] = useState(false);
+  const [adminBossError, setAdminBossError] = useState('');
+  const [adminBossStatus, setAdminBossStatus] = useState('');
   const initialLoadDoneRef = useRef(false);
   const summaryCacheRef = useRef(new Map());
   const libraryListRef = useRef(null);
   const libraryDepthFrameRef = useRef(0);
   const articlesRequestIdRef = useRef(0);
   const collectionRequestIdRef = useRef(0);
+  const bossTeamRequestIdRef = useRef(0);
   const adminUsersRequestIdRef = useRef(0);
   const adminArticlesRequestIdRef = useRef(0);
+  const adminBossArticlesRequestIdRef = useRef(0);
   const recentTitlesRef = useRef({
     set: new Set(),
     queue: []
@@ -345,6 +434,7 @@ function App() {
 
   const isLibraryView = viewMode === VIEW_MODES.LIBRARY;
   const isCollectionView = viewMode === VIEW_MODES.COLLECTION;
+  const isBossView = viewMode === VIEW_MODES.BOSS;
 
   useEffect(() => {
     if (initialLoadDoneRef.current) return;
@@ -450,11 +540,103 @@ function App() {
   }, [authToken]);
 
   useEffect(() => {
+    if (!authUser) {
+      resetBossSelection();
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!isBossView || !authUser) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBossTeamSearchQuery(bossTeamSearchInput.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [bossTeamSearchInput, isBossView, authUser]);
+
+  useEffect(() => {
+    if (!isBossView || !authToken || !authUser) {
+      return;
+    }
+
+    const requestId = bossTeamRequestIdRef.current + 1;
+    bossTeamRequestIdRef.current = requestId;
+    setIsBossTeamLoading(true);
+    setBossTeamError('');
+
+    const loadBossTeamCandidates = async () => {
+      try {
+        const payload = await fetchMyArticlesPage(0, BOSS_TEAM_SEARCH_LIMIT, authToken, {
+          search: bossTeamSearchQuery
+        });
+
+        if (requestId !== bossTeamRequestIdRef.current) {
+          return;
+        }
+
+        const incomingArticles = Array.isArray(payload.articles) ? payload.articles : [];
+        if (payload.rarityLevels) {
+          setRarityLevels(buildRarityLevels(payload.rarityLevels));
+        }
+        setBossTeamCandidates(incomingArticles);
+      } catch (error) {
+        if (requestId === bossTeamRequestIdRef.current) {
+          setBossTeamCandidates([]);
+          setBossTeamError(error.message || 'Не удалось загрузить карты для боя.');
+        }
+      } finally {
+        if (requestId === bossTeamRequestIdRef.current) {
+          setIsBossTeamLoading(false);
+        }
+      }
+    };
+
+    loadBossTeamCandidates();
+  }, [bossTeamSearchQuery, isBossView, authToken, authUser]);
+
+  useEffect(() => {
+    if (!bossData) {
+      setBossDisplayCard(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const hydrateBossCard = async () => {
+      const summary = await getCachedPageSummary(bossData.title);
+      if (isCancelled) {
+        return;
+      }
+
+      const card = {
+        ...processCardData(bossData, summary, rarityLevels),
+        remainingHp: bossData.remainingHp,
+        maxHp: bossData.maxHp,
+        status: bossData.status
+      };
+
+      setBossDisplayCard(card);
+    };
+
+    hydrateBossCard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [bossData, rarityLevels]);
+
+  useEffect(() => {
     if (authUser?.isAdmin) {
       return;
     }
 
     resetAdminGrantPanel();
+    resetAdminBossPanel();
   }, [authUser]);
 
   useEffect(() => {
@@ -573,6 +755,67 @@ function App() {
   }, [adminArticleSearchQuery, isAdminGrantPanelOpen, authUser]);
 
   useEffect(() => {
+    if (!isAdminBossPanelOpen || !authUser?.isAdmin) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAdminBossSearchQuery(adminBossSearchInput.trim());
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [adminBossSearchInput, isAdminBossPanelOpen, authUser]);
+
+  useEffect(() => {
+    if (!isAdminBossPanelOpen || !authUser?.isAdmin) {
+      return;
+    }
+
+    if (adminBossSearchQuery.length < ADMIN_SEARCH_MIN_LENGTH) {
+      setAdminBossResults([]);
+      setAdminBossArticlesError('');
+      setIsLoadingAdminBossArticles(false);
+      return;
+    }
+
+    const requestId = adminBossArticlesRequestIdRef.current + 1;
+    adminBossArticlesRequestIdRef.current = requestId;
+    setIsLoadingAdminBossArticles(true);
+    setAdminBossArticlesError('');
+
+    const loadBossArticles = async () => {
+      try {
+        const payload = await fetchArticlesPage(0, ADMIN_SEARCH_LIMIT, {
+          search: adminBossSearchQuery
+        });
+
+        if (requestId !== adminBossArticlesRequestIdRef.current) {
+          return;
+        }
+
+        const incomingArticles = Array.isArray(payload.articles) ? payload.articles : [];
+        if (payload.rarityLevels) {
+          setRarityLevels(buildRarityLevels(payload.rarityLevels));
+        }
+        setAdminBossResults(incomingArticles);
+      } catch (error) {
+        if (requestId === adminBossArticlesRequestIdRef.current) {
+          setAdminBossResults([]);
+          setAdminBossArticlesError(error.message || 'Не удалось загрузить статьи.');
+        }
+      } finally {
+        if (requestId === adminBossArticlesRequestIdRef.current) {
+          setIsLoadingAdminBossArticles(false);
+        }
+      }
+    };
+
+    loadBossArticles();
+  }, [adminBossSearchQuery, isAdminBossPanelOpen, authUser]);
+
+  useEffect(() => {
     return () => {
       if (typeof window !== 'undefined' && libraryDepthFrameRef.current) {
         window.cancelAnimationFrame(libraryDepthFrameRef.current);
@@ -605,6 +848,21 @@ function App() {
     setAuthForm(EMPTY_AUTH_FORM);
   };
 
+  const resetBossBattleState = () => {
+    setBossBattleResult(null);
+    setBossBattleError('');
+  };
+
+  const resetBossSelection = () => {
+    setBossTeamSearchInput('');
+    setBossTeamSearchQuery('');
+    setBossTeamCandidates([]);
+    setBossTeamError('');
+    setSelectedBossTeam([]);
+    setIsBossTeamLoading(false);
+    resetBossBattleState();
+  };
+
   const resetAdminGrantPanel = () => {
     setIsAdminGrantPanelOpen(false);
     setAdminUserSearchInput('');
@@ -624,12 +882,26 @@ function App() {
     setAdminGrantStatus('');
   };
 
+  const resetAdminBossPanel = () => {
+    setIsAdminBossPanelOpen(false);
+    setAdminBossSearchInput('');
+    setAdminBossSearchQuery('');
+    setAdminBossResults([]);
+    setSelectedAdminBossArticle(null);
+    setIsLoadingAdminBossArticles(false);
+    setAdminBossArticlesError('');
+    setIsAdminBossSubmitting(false);
+    setAdminBossError('');
+    setAdminBossStatus('');
+  };
+
   const toggleMenu = () => {
     setIsMenuOpen((current) => {
       const next = !current;
       if (!next) {
         resetAuthPanel();
         resetAdminGrantPanel();
+        resetAdminBossPanel();
       }
       return next;
     });
@@ -637,8 +909,11 @@ function App() {
 
   const openAuthMode = (mode) => {
     setIsAdminGrantPanelOpen(false);
+    setIsAdminBossPanelOpen(false);
     setAdminGrantError('');
     setAdminGrantStatus('');
+    setAdminBossError('');
+    setAdminBossStatus('');
     setAuthMode(mode);
     setAuthError('');
     setAuthForm(EMPTY_AUTH_FORM);
@@ -647,15 +922,58 @@ function App() {
   const toggleAdminGrantPanel = () => {
     setAuthMode(null);
     setAuthError('');
+    setIsAdminBossPanelOpen(false);
+    setAdminBossError('');
+    setAdminBossStatus('');
     setIsAdminGrantPanelOpen((current) => !current);
     setAdminGrantError('');
     setAdminGrantStatus('');
+  };
+
+  const toggleAdminBossPanel = () => {
+    setAuthMode(null);
+    setAuthError('');
+    setIsAdminGrantPanelOpen(false);
+    setAdminGrantError('');
+    setAdminGrantStatus('');
+    setIsAdminBossPanelOpen((current) => !current);
+    setAdminBossError('');
+    setAdminBossStatus('');
   };
 
   const closeMenu = () => {
     setIsMenuOpen(false);
     resetAuthPanel();
     resetAdminGrantPanel();
+    resetAdminBossPanel();
+  };
+
+  const loadBoss = async () => {
+    setIsBossLoading(true);
+    setBossError('');
+
+    try {
+      const payload = await fetchCurrentBoss();
+
+      if (payload.rarityLevels) {
+        setRarityLevels(buildRarityLevels(payload.rarityLevels));
+      }
+
+      setBossData(payload.boss || null);
+    } catch (error) {
+      setBossError(error.message || 'Не удалось загрузить босса.');
+    } finally {
+      setIsBossLoading(false);
+    }
+  };
+
+  const switchToBossView = () => {
+    setViewMode(VIEW_MODES.BOSS);
+    setSelectedLibraryCard(null);
+    setIsOpening(false);
+    setCurrentCardIndex(-1);
+    resetBossBattleState();
+    loadBoss();
   };
 
   const switchToLibraryView = () => {
@@ -678,6 +996,27 @@ function App() {
     setCurrentCardIndex(-1);
   };
 
+  const handleBossTeamSearchInputChange = (event) => {
+    setBossTeamSearchInput(event.target.value);
+    resetBossBattleState();
+  };
+
+  const addBossTeamMember = (article) => {
+    resetBossBattleState();
+    setSelectedBossTeam((current) => {
+      if (current.some((item) => item.id === article.id) || current.length >= BOSS_TEAM_SIZE) {
+        return current;
+      }
+
+      return [...current, article];
+    });
+  };
+
+  const removeBossTeamMember = (articleId) => {
+    resetBossBattleState();
+    setSelectedBossTeam((current) => current.filter((item) => item.id !== articleId));
+  };
+
   const handleAdminUserSearchInputChange = (event) => {
     setAdminUserSearchInput(event.target.value);
     setSelectedAdminUser(null);
@@ -690,6 +1029,13 @@ function App() {
     setSelectedGrantArticle(null);
     setAdminGrantError('');
     setAdminGrantStatus('');
+  };
+
+  const handleAdminBossSearchInputChange = (event) => {
+    setAdminBossSearchInput(event.target.value);
+    setSelectedAdminBossArticle(null);
+    setAdminBossError('');
+    setAdminBossStatus('');
   };
 
   const selectAdminUser = (user) => {
@@ -706,6 +1052,49 @@ function App() {
     setAdminArticleSearchQuery(article.title);
     setAdminGrantError('');
     setAdminGrantStatus('');
+  };
+
+  const selectAdminBossArticle = (article) => {
+    setSelectedAdminBossArticle(article);
+    setAdminBossSearchInput(article.title);
+    setAdminBossSearchQuery(article.title);
+    setAdminBossError('');
+    setAdminBossStatus('');
+  };
+
+  const handleBossBattleSubmit = async () => {
+    if (!authToken || selectedBossTeam.length !== BOSS_TEAM_SIZE) {
+      return;
+    }
+
+    setIsBossBattleSubmitting(true);
+    setBossBattleError('');
+    setBossBattleResult(null);
+
+    try {
+      const payload = await submitBossBattle(
+        selectedBossTeam.map((article) => article.id),
+        authToken
+      );
+
+      if (payload.rarityLevels) {
+        setRarityLevels(buildRarityLevels(payload.rarityLevels));
+      }
+
+      setBossData(payload.boss || null);
+      setBossBattleResult(payload);
+
+      if (payload.outcome === 'victory') {
+        setCollectionArticles([]);
+        setCollectionTotal(0);
+        setHasMoreCollectionArticles(true);
+        setCollectionError('');
+      }
+    } catch (error) {
+      setBossBattleError(error.message || 'Не удалось провести бой.');
+    } finally {
+      setIsBossBattleSubmitting(false);
+    }
   };
 
   const getCachedPageSummary = async (title) => {
@@ -1152,6 +1541,33 @@ function App() {
     }
   };
 
+  const handleAdminBossSubmit = async () => {
+    if (!authToken || !selectedAdminBossArticle) {
+      return;
+    }
+
+    setIsAdminBossSubmitting(true);
+    setAdminBossError('');
+    setAdminBossStatus('');
+
+    try {
+      const payload = await changeBossArticle(selectedAdminBossArticle.id, authToken);
+
+      if (payload.rarityLevels) {
+        setRarityLevels(buildRarityLevels(payload.rarityLevels));
+      }
+
+      setBossData(payload.boss || null);
+      setBossDisplayCard(null);
+      resetBossSelection();
+      setAdminBossStatus(`Босс сменён на "${selectedAdminBossArticle.title}".`);
+    } catch (error) {
+      setAdminBossError(error.message || 'Не удалось сменить босса.');
+    } finally {
+      setIsAdminBossSubmitting(false);
+    }
+  };
+
   const openPack = () => {
     if (cards.length === 0 || isFetchingCards || isPackCooldown) return;
     setIsOpening(true);
@@ -1210,6 +1626,12 @@ function App() {
       : 'Войдите, чтобы видеть выбитые статьи.'
     : 'Статьи не найдены.';
   const previewLabel = isCollectionView ? 'Карточка статьи из коллекции' : 'Карточка статьи из каталога';
+  const availableBossTeamCandidates = bossTeamCandidates.filter(
+    (article) => !selectedBossTeam.some((selectedArticle) => selectedArticle.id === article.id)
+  );
+  const bossHpPercent = bossDisplayCard?.maxHp
+    ? Math.max(0, Math.min(100, Math.round((bossDisplayCard.remainingHp / bossDisplayCard.maxHp) * 100)))
+    : 0;
 
   return (
     <div className="App">
@@ -1254,6 +1676,15 @@ function App() {
             <path d="m11.9 8.7.8 1.65 1.8.26-1.3 1.28.31 1.82-1.61-.86-1.61.86.31-1.82-1.3-1.28 1.8-.26z" />
           </svg>
         </button>
+
+        <button
+          type="button"
+          className={`view-toggle boss-toggle ${viewMode === VIEW_MODES.BOSS ? 'active' : ''}`}
+          onClick={switchToBossView}
+          aria-label="Показать экран боя с боссом"
+        >
+          <span className="boss-emoji-icon" aria-hidden="true">☠︎</span>
+        </button>
       </div>
 
       <button
@@ -1297,6 +1728,13 @@ function App() {
                   onClick={toggleAdminGrantPanel}
                 >
                   Выдача карт
+                </button>
+                <button
+                  type="button"
+                  className={`auth-action-btn admin-toggle ${isAdminBossPanelOpen ? 'active' : ''}`}
+                  onClick={toggleAdminBossPanel}
+                >
+                  Поменять босса
                 </button>
               </div>
             ) : null}
@@ -1483,6 +1921,83 @@ function App() {
           </section>
         ) : null}
 
+        {authUser?.isAdmin && isAdminBossPanelOpen ? (
+          <section className="admin-grant-panel">
+            <div className="admin-panel-kicker">Администрирование</div>
+            <h3>Поменять босса</h3>
+            <p className="admin-panel-description">
+              Найди любую статью по названию и назначь её текущим боссом.
+            </p>
+
+            <label className="admin-panel-field">
+              <span>Новый босс</span>
+              <input
+                type="text"
+                value={adminBossSearchInput}
+                onChange={handleAdminBossSearchInputChange}
+                placeholder="Название статьи"
+              />
+            </label>
+
+            <div className="admin-panel-selection">
+              <span>Выбранная статья</span>
+              <strong>{selectedAdminBossArticle ? selectedAdminBossArticle.title : 'Не выбрана'}</strong>
+              <small>
+                {selectedAdminBossArticle ? (() => {
+                  const rarity =
+                    selectedAdminBossArticle.rarity ||
+                    getRarityByViewCount(selectedAdminBossArticle.viewCount, rarityLevels);
+                  return `${rarityLevels[rarity]?.name || rarity} • ${formatFullNumber(selectedAdminBossArticle.viewCount)} просмотров`;
+                })() : 'Найди статью и нажми на неё'}
+              </small>
+            </div>
+
+            <div className="admin-search-results article-results">
+              {isLoadingAdminBossArticles ? (
+                <div className="auth-status">Ищем статьи...</div>
+              ) : adminBossArticlesError ? (
+                <div className="auth-error">{adminBossArticlesError}</div>
+              ) : adminBossSearchQuery.length < ADMIN_SEARCH_MIN_LENGTH ? (
+                <div className="auth-status">Введите минимум 2 символа названия статьи.</div>
+              ) : adminBossResults.length > 0 ? (
+                adminBossResults.map((article) => {
+                  const rarity = article.rarity || getRarityByViewCount(article.viewCount, rarityLevels);
+                  const rarityData = rarityLevels[rarity];
+
+                  return (
+                    <button
+                      key={article.id}
+                      type="button"
+                      className={`admin-search-result ${selectedAdminBossArticle?.id === article.id ? 'selected' : ''}`}
+                      onClick={() => selectAdminBossArticle(article)}
+                    >
+                      <div>
+                        <strong>{article.title}</strong>
+                        <span>{rarityData?.name || rarity}</span>
+                      </div>
+                      <em>{formatCompactNumber(article.viewCount)}</em>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="auth-status">Статьи не найдены.</div>
+              )}
+            </div>
+
+            {adminBossError ? <div className="auth-error">{adminBossError}</div> : null}
+            {adminBossStatus ? <div className="admin-success">{adminBossStatus}</div> : null}
+
+            <button
+              type="button"
+              className="auth-submit-btn admin-grant-btn"
+              onClick={handleAdminBossSubmit}
+              disabled={isAdminBossSubmitting || !selectedAdminBossArticle}
+            >
+              {isAdminBossSubmitting ? 'Меняем босса...' : 'Назначить босса'}
+            </button>
+          </section>
+        ) : null}
+
         {isAuthLoading ? <div className="auth-status">Проверяем текущую сессию...</div> : null}
       </aside>
 
@@ -1527,6 +2042,201 @@ function App() {
             </div>
           )}
         </>
+      ) : isBossView ? (
+        <section className="boss-screen">
+          <div className="boss-screen-shell">
+            <div className="boss-screen-header">
+              <div>
+                <div className="library-kicker">Рейд</div>
+                <h2>Бой с боссом</h2>
+                <p>Босс выбирается случайно из божественных статей и сохраняет полученный урон между боями.</p>
+              </div>
+            </div>
+
+            {bossError ? <div className="library-status error">{bossError}</div> : null}
+
+            {isBossLoading ? (
+              <div className="library-status">Загружаем текущего босса...</div>
+            ) : bossDisplayCard ? (
+              <>
+                <div className="boss-status-bar">
+                  <div className="boss-status-copy">
+                    <strong>{bossDisplayCard.title}</strong>
+                    <span>
+                      HP {formatFullNumber(bossDisplayCard.remainingHp)} / {formatFullNumber(bossDisplayCard.maxHp)}
+                    </span>
+                  </div>
+                  <div className="boss-hp-track">
+                    <div
+                      className="boss-hp-fill"
+                      style={{
+                        width: `${bossHpPercent}%`,
+                        background: bossDisplayCard.color
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="boss-layout">
+                  <div className="boss-card-column">
+                    <div className="card-showcase boss-showcase">
+                      <Card card={bossDisplayCard} />
+                      <CardStats card={bossDisplayCard} />
+                    </div>
+                  </div>
+
+                  <div className="boss-team-column">
+                    {!authUser ? (
+                      <div className="library-status">Войди в аккаунт, чтобы выбрать 5 своих статей и начать бой.</div>
+                    ) : (
+                      <>
+                        <div className="boss-team-panel">
+                          <div className="boss-team-top">
+                            <div>
+                              <div className="library-kicker">Твоя команда</div>
+                              <h3>Выбери 5 карт</h3>
+                            </div>
+                            <div className="boss-team-count">
+                              {selectedBossTeam.length}/{BOSS_TEAM_SIZE}
+                            </div>
+                          </div>
+
+                          <label className="admin-panel-field boss-search-field">
+                            <span>Поиск по своей коллекции</span>
+                            <input
+                              type="text"
+                              value={bossTeamSearchInput}
+                              onChange={handleBossTeamSearchInputChange}
+                              placeholder="Название статьи"
+                            />
+                          </label>
+
+                          <div className="boss-selected-team">
+                            {selectedBossTeam.length > 0 ? (
+                              selectedBossTeam.map((article) => {
+                                const rarity =
+                                  article.rarity || getRarityByViewCount(article.viewCount, rarityLevels);
+                                const rarityData = rarityLevels[rarity];
+
+                                return (
+                                  <button
+                                    key={article.id}
+                                    type="button"
+                                    className="boss-selected-card"
+                                    onClick={() => removeBossTeamMember(article.id)}
+                                  >
+                                    <div>
+                                      <strong>{article.title}</strong>
+                                      <span style={{ color: rarityData?.color || '#fff' }}>
+                                        {rarityData?.name || rarity}
+                                      </span>
+                                    </div>
+                                    <em>Убрать</em>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="auth-status">Пока не выбрано ни одной карты.</div>
+                            )}
+                          </div>
+
+                          <div className="admin-search-results boss-search-results">
+                            {isBossTeamLoading ? (
+                              <div className="auth-status">Ищем карты из твоей коллекции...</div>
+                            ) : bossTeamError ? (
+                              <div className="auth-error">{bossTeamError}</div>
+                            ) : availableBossTeamCandidates.length > 0 ? (
+                              availableBossTeamCandidates.map((article) => {
+                                const rarity =
+                                  article.rarity || getRarityByViewCount(article.viewCount, rarityLevels);
+                                const rarityData = rarityLevels[rarity];
+
+                                return (
+                                  <button
+                                    key={article.id}
+                                    type="button"
+                                    className="admin-search-result"
+                                    onClick={() => addBossTeamMember(article)}
+                                    disabled={selectedBossTeam.length >= BOSS_TEAM_SIZE}
+                                  >
+                                    <div>
+                                      <strong>{article.title}</strong>
+                                      <span>{rarityData?.name || rarity}</span>
+                                    </div>
+                                    <em>{formatCompactNumber(article.viewCount)}</em>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="auth-status">
+                                {bossTeamSearchQuery ? 'Ничего не найдено в твоей коллекции.' : 'Открой паки и выбей хотя бы 5 уникальных карт.'}
+                              </div>
+                            )}
+                          </div>
+
+                          {bossBattleError ? <div className="auth-error">{bossBattleError}</div> : null}
+
+                          <div className="boss-action-row">
+                            <button
+                              type="button"
+                              className="auth-submit-btn boss-fight-btn"
+                              onClick={handleBossBattleSubmit}
+                              disabled={isBossBattleSubmitting || selectedBossTeam.length !== BOSS_TEAM_SIZE}
+                            >
+                              {isBossBattleSubmitting ? 'Идёт бой...' : 'Бой'}
+                            </button>
+
+                            {bossDisplayCard.status === 'defeated' ? (
+                              <button type="button" className="library-more-btn" onClick={loadBoss}>
+                                Новый босс
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {bossBattleResult ? (
+                          <div className="boss-battle-log">
+                            <div className="boss-battle-summary">
+                              <strong>
+                                {bossBattleResult.outcome === 'victory'
+                                  ? 'Босс побеждён'
+                                  : 'Команда пала'}
+                              </strong>
+                              <span>
+                                {bossBattleResult.outcome === 'victory'
+                                  ? `Статья "${bossBattleResult.grantedArticle?.title}" добавлена в коллекцию.`
+                                  : `У босса осталось ${formatFullNumber(bossBattleResult.boss.remainingHp)} HP.`}
+                              </span>
+                            </div>
+
+                            <div className="boss-rounds">
+                              {bossBattleResult.rounds.map((round) => (
+                                <div key={round.turn} className="boss-round">
+                                  <div className="boss-round-title">Ход {round.turn}</div>
+                                  <div className="boss-round-line">
+                                    Босс ударил карту "{round.bossAttack.targetTitle}" через {getStatLabel(round.bossAttack.statKey)}:
+                                    {` ${formatFullNumber(round.bossAttack.attackValue)} - ${formatFullNumber(round.bossAttack.defenseValue)} = ${formatFullNumber(round.bossAttack.damage)} урона.`}
+                                  </div>
+                                  {round.playerAttacks.map((attack) => (
+                                    <div key={`${round.turn}-${attack.articleId}`} className="boss-round-line">
+                                      {attack.blocked
+                                        ? `Босс заблокировал атаку карты "${attack.title}".`
+                                        : `Карта "${attack.title}" ударила через ${getStatLabel(attack.statKey)} на ${formatFullNumber(attack.damage)} урона. У босса осталось ${formatFullNumber(attack.bossRemainingHp)} HP.`}
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </section>
       ) : (
         <section className="article-library">
           <>
@@ -1676,6 +2386,7 @@ function App() {
           ) : null}
         </section>
       )}
+
     </div>
   );
 }

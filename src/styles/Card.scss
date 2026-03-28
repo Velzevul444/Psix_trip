@@ -145,25 +145,70 @@
   opacity: 0.6;
   pointer-events: none;
   z-index: -1;
+  transition: box-shadow 0.35s ease, opacity 0.35s ease, filter 0.35s ease;
 }
 
 // Редкости - специальные эффекты
 .card-front {
   &.rarity-divine {
-    .card-frame { animation: divine-pulse 2s ease-in-out infinite; }
+    .card-frame { animation: divine-pulse 3.2s ease-in-out infinite; }
+    .card-glow {
+      opacity: 0.95;
+      filter: saturate(1.2);
+    }
     &::before {
       content: '';
       position: absolute;
-      inset: -2px;
-      background: linear-gradient(90deg, #FFD700, #FFA500, #FFD700);
-      border-radius: 18px;
+      inset: -18px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255, 244, 180, 0.88) 0%, rgba(255, 215, 0, 0.18) 30%, transparent 58%),
+        radial-gradient(circle at 72% 28%, rgba(255, 173, 51, 0.62) 0%, rgba(255, 173, 51, 0.16) 26%, transparent 54%),
+        radial-gradient(circle at 50% 78%, rgba(255, 230, 120, 0.54) 0%, rgba(255, 200, 0, 0.12) 24%, transparent 52%);
+      border-radius: 28px;
       z-index: -1;
-      animation: rotate-gradient 3s linear infinite;
+      filter: blur(12px);
+      animation: divine-aura-flow 5.5s ease-in-out infinite;
+    }
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 22px;
+      background: conic-gradient(
+        from 0deg,
+        rgba(255, 215, 0, 0.0) 0deg,
+        rgba(255, 233, 128, 0.72) 72deg,
+        rgba(255, 163, 26, 0.58) 144deg,
+        rgba(255, 215, 0, 0.08) 216deg,
+        rgba(255, 246, 190, 0.75) 288deg,
+        rgba(255, 215, 0, 0.0) 360deg
+      );
+      z-index: -2;
+      filter: blur(18px);
+      opacity: 0.72;
+      animation: rotate-gradient 8s linear infinite;
     }
   }
 
   &.rarity-legendary {
-    .card-frame { animation: legendary-pulse 2s ease-in-out infinite; }
+    .card-frame { animation: legendary-pulse 2.8s ease-in-out infinite; }
+    .card-glow {
+      opacity: 0.88;
+      filter: saturate(1.08);
+    }
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 20% 24%, rgba(255, 173, 112, 0.6) 0%, rgba(255, 107, 53, 0.18) 30%, transparent 58%),
+        radial-gradient(circle at 78% 30%, rgba(255, 120, 84, 0.56) 0%, rgba(255, 69, 0, 0.16) 26%, transparent 54%),
+        radial-gradient(circle at 50% 82%, rgba(255, 182, 143, 0.4) 0%, rgba(255, 107, 53, 0.1) 24%, transparent 52%);
+      z-index: -1;
+      filter: blur(14px);
+      animation: legendary-aura-flow 4.8s ease-in-out infinite;
+    }
   }
 
   &.rarity-mythic {
@@ -180,13 +225,13 @@
 }
 
 @keyframes divine-pulse {
-  0%, 100% { box-shadow: 0 0 20px #FFD700, 0 0 40px #FFA500; }
-  50% { box-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500, 0 0 80px #FFD700; }
+  0%, 100% { box-shadow: 0 0 24px rgba(255, 215, 0, 0.82), 0 0 56px rgba(255, 165, 0, 0.48); }
+  50% { box-shadow: 0 0 34px rgba(255, 226, 92, 0.96), 0 0 74px rgba(255, 165, 0, 0.62), 0 0 106px rgba(255, 215, 0, 0.42); }
 }
 
 @keyframes legendary-pulse {
-  0%, 100% { box-shadow: 0 0 15px #FF6B35; }
-  50% { box-shadow: 0 0 25px #FF6B35, 0 0 50px #FF4500; }
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 107, 53, 0.76), 0 0 36px rgba(255, 69, 0, 0.26); }
+  50% { box-shadow: 0 0 28px rgba(255, 126, 72, 0.92), 0 0 58px rgba(255, 69, 0, 0.46), 0 0 84px rgba(255, 107, 53, 0.26); }
 }
 
 @keyframes mythic-pulse {
@@ -207,6 +252,28 @@
 @keyframes rotate-gradient {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes divine-aura-flow {
+  0%, 100% {
+    transform: scale(0.98) translate3d(0, 0, 0);
+    opacity: 0.88;
+  }
+  50% {
+    transform: scale(1.03) translate3d(0, -4px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes legendary-aura-flow {
+  0%, 100% {
+    transform: scale(0.985) translate3d(0, 0, 0);
+    opacity: 0.76;
+  }
+  50% {
+    transform: scale(1.015) translate3d(0, -3px, 0);
+    opacity: 0.95;
+  }
 }
 
 // Scrollbar
