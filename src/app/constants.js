@@ -1,0 +1,50 @@
+import { RARITY_ORDER } from '../../shared/rarity.mjs';
+
+export const PACK_SIZE = 5;
+export const PACK_FETCH_BATCH = PACK_SIZE * 4;
+export const PACK_FETCH_ATTEMPTS = 4;
+export const ARTICLE_PAGE_SIZE = 60;
+export const RECENT_TITLES_LIMIT = 250;
+export const NEXT_PACK_DELAY_MS = 1200;
+export const TITLE_PROCESS_CONCURRENCY = 6;
+export const AUTH_STORAGE_KEY = 'wiki-cards-auth-token';
+export const ADMIN_SEARCH_LIMIT = 12;
+export const ADMIN_SEARCH_MIN_LENGTH = 2;
+export const BOSS_TEAM_SEARCH_LIMIT = 24;
+export const BOSS_TEAM_SIZE = 5;
+export const VIEW_MODES = {
+  PACKS: 'packs',
+  LIBRARY: 'library',
+  COLLECTION: 'collection',
+  BOSS: 'boss'
+};
+export { RARITY_ORDER };
+export const STAT_LABELS = [
+  { key: 'hp', label: 'HP' },
+  { key: 'stamina', label: 'ST' },
+  { key: 'strength', label: 'STR' },
+  { key: 'dexterity', label: 'DEX' },
+  { key: 'intelligence', label: 'INT' },
+  { key: 'charisma', label: 'CHA' }
+];
+export const FALLBACK_EXTRACT = 'Краткое описание для этой статьи не найдено.';
+export const EMPTY_AUTH_FORM = {
+  username: '',
+  email: '',
+  password: ''
+};
+export const API_ENDPOINTS = {
+  PACK: import.meta.env.VITE_PACK_API_ENDPOINT || '/api/pack',
+  ARTICLES: import.meta.env.VITE_ARTICLES_API_ENDPOINT || '/api/articles',
+  MY_ARTICLES: import.meta.env.VITE_MY_ARTICLES_API_ENDPOINT || '/api/my-articles',
+  AUTH_REGISTER: import.meta.env.VITE_AUTH_REGISTER_ENDPOINT || '/api/auth/register',
+  AUTH_LOGIN: import.meta.env.VITE_AUTH_LOGIN_ENDPOINT || '/api/auth/login',
+  AUTH_ME: import.meta.env.VITE_AUTH_ME_ENDPOINT || '/api/auth/me',
+  ADMIN_USERS: import.meta.env.VITE_ADMIN_USERS_ENDPOINT || '/api/admin/users',
+  ADMIN_GRANT_CARD:
+    import.meta.env.VITE_ADMIN_GRANT_CARD_ENDPOINT || '/api/admin/grant-card',
+  ADMIN_CHANGE_BOSS:
+    import.meta.env.VITE_ADMIN_CHANGE_BOSS_ENDPOINT || '/api/admin/change-boss',
+  BOSS: import.meta.env.VITE_BOSS_ENDPOINT || '/api/boss',
+  BOSS_BATTLE: import.meta.env.VITE_BOSS_BATTLE_ENDPOINT || '/api/boss/battle'
+};
