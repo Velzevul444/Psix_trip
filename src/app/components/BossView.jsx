@@ -28,6 +28,8 @@ function BossView({
   const [bossTeamCandidates, setBossTeamCandidates] = useState([]);
   const [isBossTeamLoading, setIsBossTeamLoading] = useState(false);
   const [bossTeamError, setBossTeamError] = useState('');
+  const [cardCooldowns, setCardCooldowns] = useState([]);
+  const [cooldownNow, setCooldownNow] = useState(() => Date.now());
   const [selectedBossTeam, setSelectedBossTeam] = useState([]);
   const [bossBattleResult, setBossBattleResult] = useState(null);
   const [bossBattleError, setBossBattleError] = useState('');
@@ -37,13 +39,30 @@ function BossView({
 
   useEffect(() => {
     loadBoss();
-  }, [refreshToken]);
+  }, [refreshToken, authToken]);
 
   useEffect(() => {
     if (!authUser) {
       resetBossSelection();
+      setCardCooldowns([]);
     }
   }, [authUser]);
+
+  useEffect(() => {
+    setCooldownNow(Date.now());
+
+    if (!cardCooldowns.some((cooldown) => new Date(cooldown.availableAt).getTime() > Date.now())) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCooldownNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [cardCooldowns]);
 
   useEffect(() => {
     if (!authUser) {
@@ -176,15 +195,17 @@ function BossView({
     setBossError('');
 
     try {
-      const payload = await fetchCurrentBoss();
+      const payload = await fetchCurrentBoss(authToken);
 
       if (payload.rarityLevels) {
         onRarityLevelsChange(payload.rarityLevels);
       }
 
       setBossData(payload.boss || null);
+      setCardCooldowns(Array.isArray(payload.cardCooldowns) ? payload.cardCooldowns : []);
     } catch (error) {
       setBossError(error.message || 'Не удалось загрузить босса.');
+      setCardCooldowns([]);
     } finally {
       setIsBossLoading(false);
     }
@@ -207,7 +228,13 @@ function BossView({
   };
 
   const handleBossBattleSubmit = async () => {
-    if (!authToken || selectedBossTeam.length !== BOSS_TEAM_SIZE) {
+    if (!authToken) {
+      setBossBattleError('Войди в аккаунт, чтобы начать бой.');
+      return;
+    }
+
+    if (selectedBossTeam.length !== BOSS_TEAM_SIZE) {
+      setBossBattleError(`Собери команду из ${BOSS_TEAM_SIZE} карт, чтобы начать бой.`);
       return;
     }
 
@@ -226,7 +253,9 @@ function BossView({
       }
 
       setBossData(payload.boss || null);
+      setCardCooldowns(Array.isArray(payload.cardCooldowns) ? payload.cardCooldowns : []);
       setBossBattleResult(payload);
+      setSelectedBossTeam([]);
 
       if (payload.outcome === 'victory') {
         onCollectionRefresh();
@@ -238,9 +267,41 @@ function BossView({
     }
   };
 
-  const availableBossTeamCandidates = bossTeamCandidates.filter(
+  const bossTeamCandidatesPool = bossTeamCandidates.filter(
     (article) => !selectedBossTeam.some((selectedArticle) => selectedArticle.id === article.id)
   );
+  const cooldownsByArticleId = new Map(
+    cardCooldowns.map((cooldown) => [Number(cooldown.articleId), cooldown])
+  );
+  const getCardCooldown = (articleId) => {
+    const cooldown = cooldownsByArticleId.get(Number(articleId));
+
+    if (!cooldown) {
+      return null;
+    }
+
+    const availableAtMs = new Date(cooldown.availableAt).getTime();
+    if (!Number.isFinite(availableAtMs) || availableAtMs <= cooldownNow) {
+      return null;
+    }
+
+    return {
+      ...cooldown,
+      remainingMs: availableAtMs - cooldownNow
+    };
+  };
+  const formatCooldownRemaining = (remainingMs) => {
+    const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
   const bossHpPercent = bossDisplayCard?.maxHp
     ? Math.max(0, Math.min(100, Math.round((bossDisplayCard.remainingHp / bossDisplayCard.maxHp) * 100)))
     : 0;
@@ -252,7 +313,6 @@ function BossView({
           <div>
             <div className="library-kicker">Рейд</div>
             <h2>Бой с боссом</h2>
-            <p>Босс выбирается случайно из божественных статей и сохраняет полученный урон между боями.</p>
           </div>
         </div>
 
@@ -286,6 +346,23 @@ function BossView({
                   <Card card={bossDisplayCard} />
                   <CardStats card={bossDisplayCard} />
                 </div>
+
+                {authUser ? (
+                  <div className="boss-primary-action">
+                    <button
+                      type="button"
+                      className="auth-submit-btn boss-fight-btn"
+                      onClick={handleBossBattleSubmit}
+                      disabled={isBossBattleSubmitting}
+                    >
+                      {isBossBattleSubmitting
+                        ? 'Идёт бой...'
+                        : selectedBossTeam.length === BOSS_TEAM_SIZE
+                          ? 'Начать бой'
+                          : `Бой ${selectedBossTeam.length}/${BOSS_TEAM_SIZE}`}
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className="boss-team-column">
@@ -350,24 +427,35 @@ function BossView({
                           <div className="auth-status">Ищем карты из твоей коллекции...</div>
                         ) : bossTeamError ? (
                           <div className="auth-error">{bossTeamError}</div>
-                        ) : availableBossTeamCandidates.length > 0 ? (
-                          availableBossTeamCandidates.map((article) => {
+                        ) : bossTeamCandidatesPool.length > 0 ? (
+                          bossTeamCandidatesPool.map((article) => {
                             const rarity = resolveArticleRarity(article, rarityLevels);
                             const rarityData = rarityLevels[rarity];
+                            const cardCooldown = getCardCooldown(article.id);
+                            const isCoolingDown = Boolean(cardCooldown);
 
                             return (
                               <button
                                 key={article.id}
                                 type="button"
-                                className="admin-search-result"
+                                className={`admin-search-result ${isCoolingDown ? 'cooldown-active' : ''}`}
                                 onClick={() => addBossTeamMember(article)}
-                                disabled={selectedBossTeam.length >= BOSS_TEAM_SIZE}
+                                disabled={selectedBossTeam.length >= BOSS_TEAM_SIZE || isCoolingDown}
                               >
                                 <div>
                                   <strong>{article.title}</strong>
                                   <span>{rarityData?.name || rarity}</span>
+                                  {isCoolingDown ? (
+                                    <span className="boss-cooldown-note">
+                                      Восстановление через {formatCooldownRemaining(cardCooldown.remainingMs)}
+                                    </span>
+                                  ) : null}
                                 </div>
-                                <em>{formatCompactNumber(article.viewCount)}</em>
+                                <em className={isCoolingDown ? 'boss-cooldown-timer' : ''}>
+                                  {isCoolingDown
+                                    ? formatCooldownRemaining(cardCooldown.remainingMs)
+                                    : formatCompactNumber(article.viewCount)}
+                                </em>
                               </button>
                             );
                           })
@@ -380,22 +468,13 @@ function BossView({
 
                       {bossBattleError ? <div className="auth-error">{bossBattleError}</div> : null}
 
-                      <div className="boss-action-row">
-                        <button
-                          type="button"
-                          className="auth-submit-btn boss-fight-btn"
-                          onClick={handleBossBattleSubmit}
-                          disabled={isBossBattleSubmitting || selectedBossTeam.length !== BOSS_TEAM_SIZE}
-                        >
-                          {isBossBattleSubmitting ? 'Идёт бой...' : 'Бой'}
-                        </button>
-
-                        {bossDisplayCard.status === 'defeated' ? (
+                      {bossDisplayCard.status === 'defeated' ? (
+                        <div className="boss-action-row">
                           <button type="button" className="library-more-btn" onClick={loadBoss}>
                             Новый босс
                           </button>
-                        ) : null}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     {bossBattleResult ? (
@@ -425,7 +504,9 @@ function BossView({
                                 <div key={`${round.turn}-${attack.articleId}`} className="boss-round-line">
                                   {attack.blocked
                                     ? `Босс заблокировал атаку карты "${attack.title}".`
-                                    : `Карта "${attack.title}" ударила через ${getStatLabel(attack.statKey)} на ${formatFullNumber(attack.damage)} урона. У босса осталось ${formatFullNumber(attack.bossRemainingHp)} HP.`}
+                                    : attack.damage === 0
+                                      ? `Карта "${attack.title}" атаковала через ${getStatLabel(attack.statKey)}, но не пробила защиту босса: ${formatFullNumber(attack.attackValue)} - ${formatFullNumber(attack.defenseValue)} = 0.`
+                                      : `Карта "${attack.title}" ударила через ${getStatLabel(attack.statKey)} на ${formatFullNumber(attack.damage)} урона. У босса осталось ${formatFullNumber(attack.bossRemainingHp)} HP.`}
                                 </div>
                               ))}
                             </div>

@@ -1,36 +1,57 @@
+@media (max-width: 1180px) {
+  .app-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .app-hero-stats,
+  .pack-screen-metrics,
+  .library-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .boss-showcase {
+    justify-items: center;
+  }
+}
+
 @media (max-width: 900px) {
+  .pack-screen-stage,
   .boss-layout {
     grid-template-columns: 1fr;
   }
 
-  .library-item-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .pack-screen-stage,
+  .boss-screen-shell {
+    overflow: auto;
+  }
+
+  .boss-layout {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .boss-team-column {
+    overflow: visible;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 960px) {
   .App {
-    padding: 1.5rem 1rem 2rem;
+    padding-bottom: 6.5rem;
+  }
+
+  .app-stage {
+    margin-top: 4.7rem;
+  }
+
+  .card-showcase {
+    grid-template-columns: 1fr;
   }
 
   .view-switcher {
-    top: 1rem;
-    left: 1rem;
-    gap: 0.6rem;
-  }
-
-  .collection-toggle {
-    margin-left: 0.35rem;
-  }
-
-  .boss-toggle {
-    margin-left: 0;
-  }
-
-  .view-toggle,
-  .menu-toggle {
-    width: 52px;
-    height: 52px;
+    top: auto;
+    bottom: 1rem;
   }
 
   .menu-toggle {
@@ -38,82 +59,173 @@
     right: 1rem;
   }
 
-  .side-menu {
-    width: 100vw;
-    padding-top: 5.5rem;
-  }
-
   .library-header {
-    padding: 1rem 1.1rem;
-    align-items: stretch;
     flex-direction: column;
-
-    h2 {
-      font-size: 1.4rem;
-    }
+    align-items: stretch;
   }
 
   .library-controls {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+    justify-content: stretch;
   }
 
   .library-search,
   .library-sort {
+    min-width: 0;
     width: 100%;
   }
+}
 
-  .library-list {
-    max-height: calc(100vh - 240px);
-    padding: 1rem 0.45rem 1.4rem;
+@media (max-width: 720px) {
+  .App {
+    padding: 0.9rem 0.9rem 6.5rem;
+  }
+
+  .app-stage {
+    margin-top: 4.4rem;
+  }
+
+  .app-hero-copy,
+  .app-hero-panel,
+  .pack-screen-copy,
+  .pack-screen-stage,
+  .card-reveal,
+  .library-header,
+  .boss-screen-shell {
+    border-radius: 24px;
+  }
+
+  .app-hero-stats,
+  .pack-screen-metrics,
+  .library-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .pack-stage-card,
+  .boss-showcase {
+    padding: 0.85rem;
   }
 
   .library-item-top,
-  .library-item-footer {
+  .library-item-footer,
+  .boss-status-copy,
+  .boss-team-top {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .library-item-views {
     align-items: flex-start;
+    min-width: 0;
+  }
+
+  .library-item-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .side-menu {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .title {
+    font-size: clamp(1.85rem, 9vw, 2.65rem);
+  }
+
+  .view-switcher {
+    gap: 0.35rem;
+    padding: 0.35rem;
+  }
+
+  .view-toggle,
+  .menu-toggle {
+    width: 48px;
+    height: 48px;
   }
 
   .library-item-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .card-showcase {
-    flex-direction: column;
-  }
-
   .library-preview-overlay {
-    padding: 5.4rem 0.75rem 1.25rem;
-  }
-
-  .library-preview-shell {
-    padding: 1rem 0.75rem 1.15rem;
-  }
-
-  .boss-screen-shell {
-    padding: 1rem 0.8rem 1.1rem;
-  }
-
-  .boss-screen-header,
-  .boss-status-copy,
-  .boss-action-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .boss-search-results,
-  .boss-rounds {
-    max-height: none;
+    padding: 4.5rem 0.75rem 0.75rem;
   }
 
   .reveal-buttons {
-    button.btn-next {
-      width: 100%;
-      max-width: 320px;
-    }
+    flex-direction: column;
+  }
+
+  .auth-submit-btn,
+  .library-more-btn,
+  .btn-next,
+  .btn-close,
+  .library-wiki-link {
+    width: 100%;
+  }
+}
+
+@media (max-height: 860px) {
+  .app-stage {
+    gap: 0.7rem;
+    margin-top: 5.15rem;
+  }
+
+  .pack-screen-stage,
+  .card-reveal,
+  .library-header,
+  .boss-screen-shell {
+    border-radius: 24px;
+  }
+
+  .library-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .library-overview-card {
+    padding: 0.75rem 0.9rem;
+  }
+
+  .boss-screen-shell {
+    gap: 0.7rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .boss-screen-header p {
+    display: none;
+  }
+
+  .boss-status-bar,
+  .boss-team-panel,
+  .boss-battle-log {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .boss-showcase {
+    grid-template-columns: repeat(2, minmax(220px, 260px));
+    gap: 0.75rem;
+    padding: 0.7rem;
+  }
+
+  .boss-showcase .card-wrapper,
+  .boss-showcase .stats-wrapper {
+    width: min(100%, 260px);
+  }
+
+  .boss-search-results {
+    max-height: 190px;
+    min-height: 140px;
+  }
+
+  .pack-screen-stage {
+    padding: 0.8rem;
+  }
+
+  .pack-note {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .pack-note p {
+    font-size: 0.88rem;
+    line-height: 1.55;
   }
 }

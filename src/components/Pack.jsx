@@ -26,13 +26,13 @@ function Pack({ onOpen, cardCount, isLocked = false }) {
       >
         <div className="pack-front">
           <div className="pack-top">
-            <span className="pack-series">Wikipedia</span>
-            <span className="pack-edition">Random Edition</span>
+            <span className="pack-series">Atlas Archive</span>
+            <span className="pack-edition">Live Index</span>
           </div>
 
           <div className="pack-content">
-            <div className="pack-logo">WIKI BOOSTER</div>
-            <div className="pack-subtitle">5 случайных статей</div>
+            <div className="pack-logo">WIKI VAULT</div>
+            <div className="pack-subtitle">5 curated article drops</div>
 
             <div className="pack-art">
               <div className="pack-orbit"></div>
@@ -55,15 +55,16 @@ function Pack({ onOpen, cardCount, isLocked = false }) {
             </div>
 
             <div className="pack-info">
-              <span className="card-count">{hasCards ? `${cardCount} карт готово` : 'Подготавливаем следующий пак...'}</span>
-              <span className="booster-text">{hasCards ? 'Нажми и открой пак' : 'Подождите пару секунд'}</span>
+              <span className="card-count">{hasCards ? `${cardCount} карт уже внутри` : 'Собираем следующий дроп...'}</span>
+              <span className="booster-text">{hasCards ? 'Нажми, чтобы вскрыть архив' : 'Подожди пару секунд'}</span>
             </div>
           </div>
+
+          <div className="pack-shine"></div>
         </div>
-        <div className="pack-shine"></div>
         <div className="pack-glow"></div>
       </div>
-      <p className="pack-hint">{hasCards ? 'Нажмите, чтобы открыть пак' : 'Открытие временно заблокировано'}</p>
+      <p className="pack-hint">{hasCards ? 'Нажми, чтобы открыть пак' : 'Открытие временно недоступно'}</p>
     </div>
   );
 }

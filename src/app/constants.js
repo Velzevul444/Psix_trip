@@ -35,6 +35,7 @@ export const EMPTY_AUTH_FORM = {
 };
 export const API_ENDPOINTS = {
   PACK: import.meta.env.VITE_PACK_API_ENDPOINT || '/api/pack',
+  PACK_OPEN: import.meta.env.VITE_PACK_OPEN_API_ENDPOINT || '/api/pack/open',
   ARTICLES: import.meta.env.VITE_ARTICLES_API_ENDPOINT || '/api/articles',
   MY_ARTICLES: import.meta.env.VITE_MY_ARTICLES_API_ENDPOINT || '/api/my-articles',
   AUTH_REGISTER: import.meta.env.VITE_AUTH_REGISTER_ENDPOINT || '/api/auth/register',

@@ -281,12 +281,35 @@ export async function recordUserPackDrops(userId, cards) {
     return;
   }
 
+  await recordUserPackDropIds(
+    userId,
+    cards.map((card) => card?.id)
+  );
+}
+
+export async function recordUserPackDropIds(userId, articleIds) {
+  if (!userId || !Array.isArray(articleIds) || articleIds.length === 0) {
+    return;
+  }
+
   await ensureUserArticleDropsTable();
 
+  const uniqueArticleIds = Array.from(
+    new Set(
+      articleIds
+        .map((articleId) => Number(articleId))
+        .filter((articleId) => Number.isInteger(articleId) && articleId > 0)
+    )
+  );
+
+  if (uniqueArticleIds.length === 0) {
+    return;
+  }
+
   const values = [];
-  const placeholders = cards.map((card, index) => {
+  const placeholders = uniqueArticleIds.map((articleId, index) => {
     const baseIndex = index * 2;
-    values.push(userId, Number(card.id));
+    values.push(userId, articleId);
     return `($${baseIndex + 1}, $${baseIndex + 2})`;
   });
 

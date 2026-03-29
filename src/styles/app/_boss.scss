@@ -1,234 +1,367 @@
 .boss-screen {
-  width: min(1380px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .boss-screen-shell {
-  width: 100%;
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(7, 13, 26, 0.96) 0%, rgba(4, 8, 18, 0.98) 100%);
-  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.48);
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 0.85rem;
+  padding: clamp(0.9rem, 1.5vw, 1.15rem);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(242, 135, 107, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(242, 135, 107, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+    linear-gradient(145deg, rgba(21, 20, 24, 0.94), rgba(11, 10, 13, 0.92));
+  box-shadow: var(--shadow-lg);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.boss-screen-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+.boss-screen-header h2 {
+  margin-top: 0.9rem;
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(1.55rem, 2.5vw, 2.4rem);
+  line-height: 1.12;
+  letter-spacing: -0.05em;
+}
 
-  h2 {
-    font-size: 1.8rem;
-    margin-bottom: 0.35rem;
-  }
+.boss-screen-header p {
+  margin-top: 0.75rem;
+  color: var(--text-2);
+  line-height: 1.7;
+  max-width: 64ch;
+}
 
-  p {
-    color: rgba(255, 255, 255, 0.7);
-    line-height: 1.5;
-  }
+.boss-status-bar,
+.boss-team-panel,
+.boss-battle-log {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    rgba(255, 255, 255, 0.03);
 }
 
 .boss-status-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
   padding: 1rem 1.1rem;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .boss-status-copy {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
 
-  strong {
-    font-size: 1.08rem;
-  }
+.boss-status-copy strong {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
 
-  span {
-    color: rgba(255, 255, 255, 0.72);
-  }
+.boss-status-copy span {
+  color: var(--text-2);
 }
 
 .boss-hp-track {
   width: 100%;
   height: 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .boss-hp-fill {
   height: 100%;
   border-radius: inherit;
-  box-shadow: 0 0 18px rgba(255, 215, 0, 0.35);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 24px rgba(242, 135, 107, 0.42);
 }
 
 .boss-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.82fr);
-  gap: 1.2rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 0.96fr) minmax(320px, 1.04fr);
+  gap: 1rem;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .boss-card-column,
-.boss-team-panel,
-.boss-battle-log {
+.boss-team-column {
   min-width: 0;
+  min-height: 0;
+}
+
+.boss-card-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow: hidden;
 }
 
 .boss-showcase {
-  align-items: flex-start;
+  padding: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 300px));
+  justify-content: center;
+  align-content: start;
+  gap: 0.9rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top, rgba(242, 135, 107, 0.14), transparent 28%),
+    rgba(255, 255, 255, 0.03);
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
 }
 
-.boss-team-panel,
-.boss-battle-log {
-  padding: 1.1rem;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.boss-showcase .card-wrapper,
+.boss-showcase .stats-wrapper {
+  width: min(100%, 300px);
+}
+
+.boss-primary-action {
+  margin-top: auto;
+  flex: 0 0 auto;
+}
+
+.boss-primary-action .boss-fight-btn {
+  width: 100%;
 }
 
 .boss-team-column {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
+  overflow: hidden;
+}
+
+.boss-team-panel,
+.boss-battle-log {
+  padding: 0.95rem 1rem;
+}
+
+.boss-team-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.boss-battle-log {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .boss-team-top {
   display: flex;
-  align-items: flex-start;
+  align-items: start;
   justify-content: space-between;
   gap: 1rem;
+  margin-bottom: 0.9rem;
+}
 
-  h3 {
-    font-size: 1.2rem;
-  }
+.boss-team-top h3 {
+  margin-top: 0.8rem;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.04em;
 }
 
 .boss-team-count {
-  min-width: 58px;
-  padding: 0.55rem 0.8rem;
+  min-width: 68px;
+  padding: 0.7rem 0.9rem;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.16);
-  color: #dbeafe;
+  border: 1px solid rgba(242, 135, 107, 0.28);
+  background: rgba(242, 135, 107, 0.12);
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.boss-search-field {
-  margin-top: 0.2rem;
+.boss-search-field input {
+  width: 100%;
 }
 
 .boss-selected-team {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.7rem;
 }
 
 .boss-selected-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 17, 31, 0.82);
-  color: #fff;
-  border-radius: 16px;
-  padding: 0.85rem 0.95rem;
-  text-align: left;
+  width: 100%;
+  padding: 0.95rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-1);
+  text-align: left;
   cursor: pointer;
+  transition:
+    transform 0.24s ease,
+    border-color 0.24s ease,
+    background 0.24s ease;
+}
 
-  div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    min-width: 0;
-  }
+.boss-selected-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(242, 135, 107, 0.26);
+  background: rgba(242, 135, 107, 0.12);
+}
 
-  strong {
-    font-size: 0.95rem;
-    line-height: 1.35;
-  }
+.boss-selected-card div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
 
-  span {
-    font-size: 0.84rem;
-  }
-
-  em {
-    font-style: normal;
-    color: rgba(248, 113, 113, 0.92);
-    white-space: nowrap;
-  }
+.boss-selected-card span,
+.boss-selected-card em {
+  color: var(--text-3);
+  font-style: normal;
+  font-size: 0.82rem;
 }
 
 .boss-search-results {
-  max-height: 260px;
+  margin-top: 1rem;
+  max-height: 280px;
+  flex: 1;
+  min-height: 160px;
+  overflow: auto;
+}
+
+.boss-search-results .admin-search-result.cooldown-active {
+  opacity: 1;
+  border-color: rgba(242, 135, 107, 0.2);
+  background:
+    linear-gradient(135deg, rgba(242, 135, 107, 0.12), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.boss-search-results .admin-search-result.cooldown-active:hover {
+  transform: none;
+  border-color: rgba(242, 135, 107, 0.2);
+  background:
+    linear-gradient(135deg, rgba(242, 135, 107, 0.12), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.boss-search-results .admin-search-result.cooldown-active:disabled {
+  opacity: 0.76;
+}
+
+.boss-cooldown-note {
+  color: rgba(255, 205, 161, 0.92);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.boss-cooldown-timer {
+  min-width: 78px;
+  color: rgba(255, 205, 161, 0.96);
+  font-weight: 800;
+  text-align: right;
 }
 
 .boss-action-row {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  margin-top: auto;
+  position: sticky;
+  bottom: -1px;
+  z-index: 2;
+  padding-top: 0.85rem;
+  background:
+    linear-gradient(180deg, rgba(11, 10, 13, 0), rgba(11, 10, 13, 0.94) 42%);
 }
 
 .boss-fight-btn {
-  flex: 1 1 200px;
+  color: #fff;
+  background: linear-gradient(135deg, #f28971, #d45555);
+  box-shadow: 0 18px 34px rgba(212, 85, 85, 0.24);
+  flex: 1;
+  min-width: 220px;
+}
+
+.boss-fight-btn:hover {
+  box-shadow: 0 22px 38px rgba(212, 85, 85, 0.28);
+}
+
+.boss-action-row .library-more-btn {
+  color: var(--text-1);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: none;
 }
 
 .boss-battle-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.9rem;
+  gap: 0.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
 
-  strong {
-    font-size: 1.05rem;
-  }
+.boss-battle-summary strong {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+}
 
-  span {
-    color: rgba(255, 255, 255, 0.74);
-    line-height: 1.5;
-  }
+.boss-battle-summary span {
+  color: var(--text-2);
+  line-height: 1.6;
 }
 
 .boss-rounds {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  max-height: 360px;
-  overflow-y: auto;
-  padding-right: 0.25rem;
+  gap: 0.85rem;
+  margin-top: 1rem;
 }
 
 .boss-round {
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
-  background: rgba(7, 13, 26, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .boss-round-title {
-  font-size: 0.84rem;
+  margin-bottom: 0.55rem;
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #93c5fd;
 }
 
 .boss-round-line {
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.5;
+  color: var(--text-2);
+  line-height: 1.65;
   font-size: 0.92rem;
+}
+
+.boss-round-line + .boss-round-line {
+  margin-top: 0.55rem;
 }

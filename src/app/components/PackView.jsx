@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Pack from '../../components/Pack';
 import Card from '../../components/Card';
 import CardStats from '../../components/CardStats';
-import { fetchPackCandidates, fetchPageSummary } from '../api';
+import { fetchPackCandidates, fetchPageSummary, openPackSelection } from '../api';
 import {
   NEXT_PACK_DELAY_MS,
   PACK_FETCH_ATTEMPTS,
@@ -117,7 +117,10 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
               const summary = await getCachedPageSummary(article.title);
               return {
                 article,
-                card: buildCardData(article, summary, activeRarityLevels)
+                card: {
+                  ...buildCardData(article, summary, activeRarityLevels),
+                  packSessionId: payload.packSessionId || ''
+                }
               };
             })
           );
@@ -149,9 +152,18 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
 
   const openPack = () => {
     if (cards.length === 0 || isFetchingCards || isPackCooldown) return;
+
+    const openedPackCards = [...cards];
+
     setIsOpening(true);
-    setOpenedCards([...cards]);
+    setOpenedCards(openedPackCards);
     setCurrentCardIndex(0);
+
+    if (authToken) {
+      void openPackSelection(openedPackCards, authToken).catch((error) => {
+        console.error('Error saving opened pack:', error);
+      });
+    }
   };
 
   const prepareNextPack = async () => {
@@ -180,7 +192,7 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
   };
 
   return (
-    <>
+    <section className="pack-screen">
       <div className="rarity-legend">
         {RARITY_ORDER.map((key) => {
           const value = rarityLevels[key];
@@ -195,11 +207,35 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
       </div>
 
       {!isOpening ? (
-        <Pack
-          onOpen={openPack}
-          cardCount={cards.length}
-          isLocked={isFetchingCards || isPackCooldown}
-        />
+        <div className="pack-screen-stage">
+          <div className="pack-stage-card">
+            <Pack
+              onOpen={openPack}
+              cardCount={cards.length}
+              isLocked={isFetchingCards || isPackCooldown}
+            />
+          </div>
+
+          <div className="pack-stage-notes">
+            <article className="pack-note">
+              <span>Drop logic</span>
+              <strong>Без недавних повторов</strong>
+              <p>Система запоминает свежие заголовки и не забрасывает тебя одинаковыми статьями подряд.</p>
+            </article>
+
+            <article className="pack-note">
+              <span>Rarity engine</span>
+              <strong>Редкость считается на лету</strong>
+              <p>Вес статьи зависит от просмотров, а цвета и power карточки пересчитываются сразу после выдачи.</p>
+            </article>
+
+            <article className="pack-note">
+              <span>Preview</span>
+              <strong>Каждая карта открывается отдельно</strong>
+              <p>Ты видишь и арт, и характеристики, а потом сразу переходишь к следующему дропу.</p>
+            </article>
+          </div>
+        </div>
       ) : (
         <div className="card-reveal">
           <div className="card-counter">
@@ -217,7 +253,7 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
           </div>
         </div>
       )}
-    </>
+    </section>
   );
 }
 

@@ -91,7 +91,7 @@ function App() {
   };
 
   return (
-    <div className="App">
+    <div className={`App app-view-${viewMode}`}>
       <ViewSwitcher
         viewMode={viewMode}
         onSwitchToLibrary={() => switchView(VIEW_MODES.LIBRARY)}
@@ -125,35 +125,35 @@ function App() {
         onBossRefresh={() => setBossRefreshToken((current) => current + 1)}
       />
 
-      <h1 className="title">Wiki Cards</h1>
-
-      {viewMode === VIEW_MODES.PACKS ? (
-        <PackView
-          authToken={authToken}
-          authUser={authUser}
-          rarityLevels={rarityLevels}
-          onRarityLevelsChange={handleRarityLevelsChange}
-          recentTitlesRef={recentTitlesRef}
-        />
-      ) : viewMode === VIEW_MODES.BOSS ? (
-        <BossView
-          authToken={authToken}
-          authUser={authUser}
-          rarityLevels={rarityLevels}
-          onRarityLevelsChange={handleRarityLevelsChange}
-          refreshToken={bossRefreshToken}
-          onCollectionRefresh={() => setCollectionRefreshToken((current) => current + 1)}
-        />
-      ) : (
-        <LibraryView
-          mode={viewMode}
-          authToken={authToken}
-          authUser={authUser}
-          rarityLevels={rarityLevels}
-          onRarityLevelsChange={handleRarityLevelsChange}
-          refreshToken={collectionRefreshToken}
-        />
-      )}
+      <main className="app-stage">
+        {viewMode === VIEW_MODES.PACKS ? (
+          <PackView
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            recentTitlesRef={recentTitlesRef}
+          />
+        ) : viewMode === VIEW_MODES.BOSS ? (
+          <BossView
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            refreshToken={bossRefreshToken}
+            onCollectionRefresh={() => setCollectionRefreshToken((current) => current + 1)}
+          />
+        ) : (
+          <LibraryView
+            mode={viewMode}
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            refreshToken={collectionRefreshToken}
+          />
+        )}
+      </main>
     </div>
   );
 }

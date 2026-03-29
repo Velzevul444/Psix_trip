@@ -2,6 +2,7 @@ import { generateDeterministicCardStats } from '../../shared/card-stats.mjs';
 import { getRarityByViewCount } from '../../shared/rarity.mjs';
 import {
   BOSS_CARD_DEFEATS_TABLE,
+  BOSS_CARD_RECOVERY_MINUTES,
   BOSSES_TABLE,
   BOSS_HP_MULTIPLIER,
   BOSS_TEAM_SIZE,
@@ -122,6 +123,12 @@ function buildBossMaxHp(stats) {
   return Math.max(1, Math.round(Number(stats?.hp || 0) * BOSS_HP_MULTIPLIER));
 }
 
+function buildBossCardRecoveryAvailableAt(timestamp) {
+  return new Date(
+    new Date(timestamp).getTime() + BOSS_CARD_RECOVERY_MINUTES * 60 * 1000
+  ).toISOString();
+}
+
 function serializeBossState(bossRow, articleRow, rarityLevels) {
   const baseArticle = serializeArticleRow(articleRow, rarityLevels);
   const { rarity, stats } = resolveArticleCombatProfile(articleRow, rarityLevels);
@@ -218,15 +225,10 @@ export async function getOrCreateCurrentBoss(rarityLevels) {
   return serializeBossState(bossRow, articleRow, rarityLevels);
 }
 
-export async function loadBossDefeatedArticleIds(userId, bossId, db = pool) {
+export async function loadBossCardCooldowns(userId, db = pool) {
   const safeUserId = Number(userId);
-  const safeBossId = Number(bossId);
 
   if (!Number.isInteger(safeUserId) || safeUserId <= 0) {
-    return [];
-  }
-
-  if (!Number.isInteger(safeBossId) || safeBossId <= 0) {
     return [];
   }
 
@@ -234,16 +236,68 @@ export async function loadBossDefeatedArticleIds(userId, bossId, db = pool) {
 
   const result = await db.query(
     `
-      SELECT article_id
+      SELECT article_id, MAX(created_at) AS last_used_at
       FROM ${BOSS_CARD_DEFEATS_TABLE}
-      WHERE boss_id = $1
-        AND user_id = $2
-      ORDER BY created_at ASC, article_id ASC
+      WHERE user_id = $1
+      GROUP BY article_id
+      HAVING MAX(created_at) > NOW() - ($2::INTEGER * INTERVAL '1 minute')
+      ORDER BY MAX(created_at) ASC, article_id ASC
     `,
-    [safeBossId, safeUserId]
+    [safeUserId, BOSS_CARD_RECOVERY_MINUTES]
   );
 
-  return result.rows.map((row) => Number(row.article_id));
+  return result.rows.map((row) => ({
+    articleId: Number(row.article_id),
+    availableAt: buildBossCardRecoveryAvailableAt(row.last_used_at)
+  }));
+}
+
+export async function loadBossDefeatedArticleIds(userId, bossId, db = pool) {
+  void bossId;
+  const cooldowns = await loadBossCardCooldowns(userId, db);
+  return cooldowns.map((cooldown) => cooldown.articleId);
+}
+
+async function recordBossCardCooldowns(bossId, userId, articleIds, db = pool) {
+  const safeBossId = Number(bossId);
+  const safeUserId = Number(userId);
+  const uniqueArticleIds = Array.from(
+    new Set(
+      Array.isArray(articleIds)
+        ? articleIds
+            .map((articleId) => Number(articleId))
+            .filter((articleId) => Number.isInteger(articleId) && articleId > 0)
+        : []
+    )
+  );
+
+  if (!Number.isInteger(safeBossId) || safeBossId <= 0) {
+    return;
+  }
+
+  if (!Number.isInteger(safeUserId) || safeUserId <= 0 || uniqueArticleIds.length === 0) {
+    return;
+  }
+
+  await ensureBossCardDefeatsTable();
+
+  const createdAt = new Date().toISOString();
+  const values = [];
+  const placeholders = uniqueArticleIds.map((articleId, index) => {
+    const baseIndex = index * 4;
+    values.push(safeBossId, safeUserId, articleId, createdAt);
+    return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+  });
+
+  await db.query(
+    `
+      INSERT INTO ${BOSS_CARD_DEFEATS_TABLE} (boss_id, user_id, article_id, created_at)
+      VALUES ${placeholders.join(', ')}
+      ON CONFLICT (boss_id, user_id, article_id)
+      DO UPDATE SET created_at = EXCLUDED.created_at
+    `,
+    values
+  );
 }
 
 export async function replaceCurrentBoss(articleId, rarityLevels) {
@@ -362,17 +416,15 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
       throw new HttpError(400, 'Все выбранные карты должны быть в твоей коллекции.');
     }
 
-    const defeatedArticleIdsBeforeBattle = await loadBossDefeatedArticleIds(
-      userId,
-      Number(bossRow.id),
-      client
+    const activeCardCooldowns = await loadBossCardCooldowns(userId, client);
+    const activeCardCooldownIds = new Set(
+      activeCardCooldowns.map((cooldown) => Number(cooldown.articleId))
     );
-    const defeatedArticleIdsBeforeBattleSet = new Set(defeatedArticleIdsBeforeBattle);
 
-    if (uniqueArticleIds.some((articleId) => defeatedArticleIdsBeforeBattleSet.has(articleId))) {
+    if (uniqueArticleIds.some((articleId) => activeCardCooldownIds.has(articleId))) {
       throw new HttpError(
         400,
-        'Карты, павшие против текущего босса, нельзя отправлять на него повторно.'
+        'Некоторые карты ещё восстанавливаются после прошлого боя.'
       );
     }
 
@@ -441,16 +493,54 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
         break;
       }
 
-      for (const attacker of aliveAttackers) {
+      const attackProfiles = aliveAttackers.map((attacker) => {
+        const strongestAttack = getStrongestCombatStat(attacker.stats);
+        const bossDefenseValue = Number(boss.stats?.[strongestAttack.key] || 0);
+        const rawDamage = strongestAttack.value - bossDefenseValue;
+
+        return {
+          attacker,
+          strongestAttack,
+          bossDefenseValue,
+          rawDamage,
+          damage: Math.max(1, rawDamage)
+        };
+      });
+
+      const blockedAttackProfile = attackProfiles.reduce((bestProfile, currentProfile) => {
+        if (!bestProfile) {
+          return currentProfile;
+        }
+
+        if (currentProfile.rawDamage > bestProfile.rawDamage) {
+          return currentProfile;
+        }
+
+        if (
+          currentProfile.rawDamage === bestProfile.rawDamage &&
+          currentProfile.strongestAttack.value > bestProfile.strongestAttack.value
+        ) {
+          return currentProfile;
+        }
+
+        return bestProfile;
+      }, null);
+      const blockedAttackId = blockedAttackProfile?.attacker.id ?? null;
+
+      for (const profile of attackProfiles) {
+        const { attacker, strongestAttack, bossDefenseValue } = profile;
+
         if (boss.currentHp <= 0) {
           break;
         }
 
-        const strongestAttack = getStrongestCombatStat(attacker.stats);
-        const bossDefenseValue = Number(boss.stats?.[strongestAttack.key] || 0);
-        const damage = Math.max(0, strongestAttack.value - bossDefenseValue);
+        const isBlocked = blockedAttackId === attacker.id;
+        const damage = isBlocked ? 0 : profile.damage;
 
-        boss.currentHp = Math.max(0, boss.currentHp - damage);
+        if (!isBlocked) {
+          boss.currentHp = Math.max(0, boss.currentHp - damage);
+        }
+
         round.playerAttacks.push({
           articleId: attacker.id,
           title: attacker.title,
@@ -458,6 +548,7 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
           statKey: strongestAttack.key,
           attackValue: strongestAttack.value,
           defenseValue: bossDefenseValue,
+          blocked: isBlocked,
           damage,
           bossRemainingHp: boss.currentHp
         });
@@ -480,30 +571,10 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
       [boss.currentHp, finalStatus, bossRow.id]
     );
 
-    const defeatedFighters = fighters.filter((fighter) => fighter.currentHp <= 0);
+    await recordBossCardCooldowns(Number(bossRow.id), Number(userId), uniqueArticleIds, client);
 
-    if (defeatedFighters.length > 0) {
-      const values = [];
-      const placeholders = defeatedFighters.map((fighter, index) => {
-        const baseIndex = index * 3;
-        values.push(Number(bossRow.id), Number(userId), fighter.id);
-        return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3})`;
-      });
-
-      await client.query(
-        `
-          INSERT INTO ${BOSS_CARD_DEFEATS_TABLE} (boss_id, user_id, article_id)
-          VALUES ${placeholders.join(', ')}
-          ON CONFLICT (boss_id, user_id, article_id) DO NOTHING
-        `,
-        values
-      );
-    }
-
-    const unavailableArticleIds =
-      finalStatus === 'alive'
-        ? await loadBossDefeatedArticleIds(userId, Number(bossRow.id), client)
-        : [];
+    const cardCooldowns = await loadBossCardCooldowns(userId, client);
+    const unavailableArticleIds = cardCooldowns.map((cooldown) => cooldown.articleId);
 
     if (isVictory) {
       await client.query(
@@ -537,6 +608,7 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
         defeated: fighter.currentHp <= 0
       })),
       rounds,
+      cardCooldowns,
       unavailableArticleIds,
       grantedArticle: isVictory ? bossArticle : null
     };

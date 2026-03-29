@@ -15,12 +15,18 @@ import {
   loadPackArticles,
   loadUserArticlesPage,
   normalizeExcludedTitles,
-  recordUserPackDrops
+  recordUserPackDropIds
 } from './lib/articles.mjs';
-import { getOrCreateCurrentBoss, loadBossDefeatedArticleIds, performBossBattle, replaceCurrentBoss } from './lib/bosses.mjs';
+import {
+  getOrCreateCurrentBoss,
+  loadBossCardCooldowns,
+  performBossBattle,
+  replaceCurrentBoss
+} from './lib/bosses.mjs';
 import { HttpError } from './lib/errors.mjs';
 import { tryServeFrontend } from './lib/frontend.mjs';
 import { readJsonBody, sendJson, sendNoContent } from './lib/http.mjs';
+import { consumePendingPackSession, createPendingPackSession } from './lib/packs.mjs';
 import { clamp } from './lib/utils.mjs';
 
 function createRarityLevels() {
@@ -82,11 +88,49 @@ export function createAppServer() {
         const currentUser = await getOptionalCurrentUser(request);
 
         const cards = await loadPackArticles(count, excludeTitles, rarityLevels);
-        await recordUserPackDrops(currentUser?.id, cards);
+        const packSessionId = createPendingPackSession(cards, currentUser?.id);
 
         sendJson(response, 200, {
           cards,
-          rarityLevels
+          rarityLevels,
+          packSessionId
+        });
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/pack/open') {
+        const currentUser = await getOptionalCurrentUser(request);
+        const body = await readJsonBody(request);
+        const entries = Array.isArray(body.cards) ? body.cards : [];
+        const groupedSessions = new Map();
+
+        for (const entry of entries) {
+          const sessionId = typeof entry?.sessionId === 'string' ? entry.sessionId.trim() : '';
+          const articleId = Number(entry?.articleId);
+
+          if (!sessionId || !Number.isInteger(articleId) || articleId <= 0) {
+            continue;
+          }
+
+          if (!groupedSessions.has(sessionId)) {
+            groupedSessions.set(sessionId, []);
+          }
+
+          groupedSessions.get(sessionId).push(articleId);
+        }
+
+        const openedArticleIds = [];
+
+        for (const [sessionId, articleIds] of groupedSessions.entries()) {
+          openedArticleIds.push(
+            ...consumePendingPackSession(sessionId, articleIds, currentUser?.id ?? null)
+          );
+        }
+
+        await recordUserPackDropIds(currentUser?.id, openedArticleIds);
+
+        sendJson(response, 200, {
+          recordedCount: currentUser?.id ? openedArticleIds.length : 0
         });
         return;
       }
@@ -135,12 +179,12 @@ export function createAppServer() {
         const rarityLevels = createRarityLevels();
         const currentUser = await getOptionalCurrentUser(request);
         const boss = await getOrCreateCurrentBoss(rarityLevels);
-        const unavailableArticleIds = currentUser
-          ? await loadBossDefeatedArticleIds(currentUser.id, boss.bossRecordId)
-          : [];
+        const cardCooldowns = currentUser ? await loadBossCardCooldowns(currentUser.id) : [];
+        const unavailableArticleIds = cardCooldowns.map((cooldown) => cooldown.articleId);
 
         sendJson(response, 200, {
           boss,
+          cardCooldowns,
           unavailableArticleIds,
           rarityLevels
         });
@@ -195,6 +239,7 @@ export function createAppServer() {
 
         sendJson(response, 200, {
           boss,
+          cardCooldowns: [],
           unavailableArticleIds: [],
           rarityLevels
         });

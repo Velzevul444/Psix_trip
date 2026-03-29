@@ -35,6 +35,32 @@ export async function fetchPackCandidates(count, excludeTitles, authToken = '') 
   return response.json();
 }
 
+export async function openPackSelection(cards, authToken = '') {
+  const serializedCards = Array.isArray(cards)
+    ? cards
+        .map((card) => ({
+          sessionId: typeof card?.packSessionId === 'string' ? card.packSessionId : '',
+          articleId: Number(card?.sourceId)
+        }))
+        .filter((card) => card.sessionId && Number.isInteger(card.articleId) && card.articleId > 0)
+    : [];
+
+  const response = await fetch(API_ENDPOINTS.PACK_OPEN, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({
+      cards: serializedCards
+    })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to save opened pack: ${response.status}`);
+  }
+
+  return data;
+}
+
 export async function fetchArticlesPage(offset, limit, options = {}) {
   const params = new URLSearchParams({
     offset: String(offset),
@@ -137,8 +163,10 @@ export async function changeBossArticle(articleId, authToken) {
   return data;
 }
 
-export async function fetchCurrentBoss() {
-  const response = await fetch(API_ENDPOINTS.BOSS);
+export async function fetchCurrentBoss(authToken = '') {
+  const response = await fetch(API_ENDPOINTS.BOSS, {
+    headers: buildAuthHeaders(authToken)
+  });
   const data = await readJson(response);
 
   if (!response.ok) {

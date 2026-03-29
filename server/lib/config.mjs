@@ -44,6 +44,9 @@ export const COMBAT_STAT_KEYS = [
 ];
 export const BOSS_TEAM_SIZE = 5;
 export const BOSS_HP_MULTIPLIER = Number(process.env.BOSS_HP_MULTIPLIER || 10);
+export const BOSS_CARD_RECOVERY_MINUTES = Number(
+  process.env.BOSS_CARD_RECOVERY_MINUTES || 30
+);
 export const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'dev-only-change-me';
 export const AUTH_TOKEN_TTL_SECONDS = Number(
   process.env.AUTH_TOKEN_TTL_SECONDS || 60 * 60 * 24 * 7

@@ -230,6 +230,15 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
     }
   };
 
+  const handleLibraryItemKeyDown = (event, article) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    openLibraryArticle(article);
+  };
+
   const activeArticles = isCollectionView ? collectionArticles : articles;
   const activeArticlesTotal = isCollectionView ? collectionTotal : articlesTotal;
   const activeHasMoreArticles = isCollectionView
@@ -286,6 +295,26 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
         </div>
       </div>
 
+      <div className="library-overview">
+        <article className="library-overview-card">
+          <span>Всего в разделе</span>
+          <strong>{formatFullNumber(activeArticlesTotal)}</strong>
+          <small>{isCollectionView ? 'Карты в личном vault' : 'Статей в общем каталоге'}</small>
+        </article>
+
+        <article className="library-overview-card">
+          <span>На экране</span>
+          <strong>{formatFullNumber(activeVisibleArticles.length)}</strong>
+          <small>{activeHasMoreArticles ? 'Можно загрузить ещё' : 'Текущая выдача полная'}</small>
+        </article>
+
+        <article className="library-overview-card">
+          <span>Фильтр</span>
+          <strong>{articleRarityFilter ? rarityLevels[articleRarityFilter]?.name || articleRarityFilter : 'Все редкости'}</strong>
+          <small>{articleSearchQuery ? `Поиск: ${articleSearchQuery}` : 'Без текстового фильтра'}</small>
+        </article>
+      </div>
+
       <div className="library-list" onScroll={handleLibraryScroll} ref={listRef}>
         {activeVisibleArticles.map((article) => {
           const rarity = resolveArticleRarity(article, rarityLevels);
@@ -294,11 +323,15 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
           const totalPower = calculateTotalPower(stats);
 
           return (
-            <button
+            <article
               key={article.id}
-              type="button"
               className="library-item"
+              data-rarity={rarity}
+              style={{ '--library-accent': rarityData?.color || '#c9a36a' }}
+              role="button"
+              tabIndex={0}
               onClick={() => openLibraryArticle(article)}
+              onKeyDown={(event) => handleLibraryItemKeyDown(event, article)}
             >
               <div className="library-item-top">
                 <div className="library-item-title-wrap">
@@ -330,7 +363,7 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
                     : `ID ${article.id}`}
                 </span>
               </div>
-            </button>
+            </article>
           );
         })}
 
