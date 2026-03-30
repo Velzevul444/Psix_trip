@@ -42,6 +42,41 @@
   gap: 0.85rem;
 }
 
+.library-controls-mobile {
+  width: 100%;
+  justify-content: stretch;
+  padding: 0.7rem;
+  border-radius: calc(var(--radius-xl) - 2px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 70%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.library-controls-mobile .library-search,
+.library-controls-mobile .library-sort {
+  width: 100%;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.library-controls-mobile .library-search span,
+.library-controls-mobile .library-sort span {
+  padding-left: 0.2rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.library-controls-mobile .library-search input,
+.library-controls-mobile .library-sort select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.78rem 0.9rem;
+  border-radius: 18px;
+  background: rgba(5, 10, 12, 0.54);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .library-search,
 .library-sort {
   display: flex;

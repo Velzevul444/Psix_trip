@@ -109,6 +109,22 @@
   overflow: hidden;
 }
 
+.pack-screen-stage-mobile {
+  grid-template-columns: minmax(0, 1fr);
+  place-items: start center;
+  align-content: start;
+  padding-top: calc(1.1rem + env(safe-area-inset-top));
+}
+
+.pack-screen-stage-mobile .pack-stage-card {
+  width: 100%;
+  max-width: 100%;
+  align-content: start;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
 .pack-stage-card {
   min-height: 100%;
   padding: 1rem;

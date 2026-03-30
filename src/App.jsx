@@ -92,6 +92,10 @@ function App() {
 
   return (
     <div className={`App app-view-${viewMode}`}>
+      <div className="app-brand-mark" aria-label="WIKI CARDS">
+        <span>WIKI CARDS</span>
+      </div>
+
       <ViewSwitcher
         viewMode={viewMode}
         onSwitchToLibrary={() => switchView(VIEW_MODES.LIBRARY)}
@@ -104,7 +108,8 @@ function App() {
         type="button"
         className={`menu-toggle ${isMenuOpen ? 'open' : ''}`}
         onClick={() => setIsMenuOpen((current) => !current)}
-        aria-label="Открыть меню"
+        aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+        aria-expanded={isMenuOpen}
       >
         <span></span>
         <span></span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { fetchArticlesPage, fetchMyArticlesPage, fetchPageSummary } from '../api';
+import useIsMobileViewport from '../hooks/useIsMobileViewport';
 import { useLibraryDepthEffect } from '../hooks/useLibraryDepthEffect';
 import { ARTICLE_PAGE_SIZE, RARITY_ORDER, STAT_LABELS, VIEW_MODES } from '../constants';
 import {
@@ -33,6 +34,7 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
   const collectionRequestIdRef = useRef(0);
   const isCollectionView = mode === VIEW_MODES.COLLECTION;
   const isLibraryView = mode === VIEW_MODES.LIBRARY;
+  const isMobileViewport = useIsMobileViewport();
   const { listRef, scheduleDepthEffect } = useLibraryDepthEffect(true, articles.length + collectionArticles.length);
 
   useEffect(() => {
@@ -271,19 +273,24 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
           <h2>{activeHeading}</h2>
           <p>{activeDescription}</p>
         </div>
-        <div className="library-controls">
+        <div className={`library-controls${isMobileViewport ? ' library-controls-mobile' : ''}`}>
           <label className="library-search">
             <span>Поиск</span>
             <input
               type="text"
               value={articleSearchInput}
               onChange={(event) => setArticleSearchInput(event.target.value)}
-              placeholder="Название статьи"
+              placeholder={isMobileViewport ? 'Найти статью по названию' : 'Название статьи'}
+              aria-label="Поиск по названию статьи"
             />
           </label>
           <label className="library-sort">
             <span>Редкость</span>
-            <select value={articleRarityFilter} onChange={(event) => setArticleRarityFilter(event.target.value)}>
+            <select
+              value={articleRarityFilter}
+              onChange={(event) => setArticleRarityFilter(event.target.value)}
+              aria-label="Фильтр по редкости"
+            >
               <option value="">Все редкости</option>
               {RARITY_ORDER.map((rarityKey) => (
                 <option key={rarityKey} value={rarityKey}>
@@ -295,25 +302,27 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
         </div>
       </div>
 
-      <div className="library-overview">
-        <article className="library-overview-card">
-          <span>Всего в разделе</span>
-          <strong>{formatFullNumber(activeArticlesTotal)}</strong>
-          <small>{isCollectionView ? 'Карты в личном vault' : 'Статей в общем каталоге'}</small>
-        </article>
+      {!isMobileViewport ? (
+        <div className="library-overview">
+          <article className="library-overview-card">
+            <span>Всего в разделе</span>
+            <strong>{formatFullNumber(activeArticlesTotal)}</strong>
+            <small>{isCollectionView ? 'Карты в личном vault' : 'Статей в общем каталоге'}</small>
+          </article>
 
-        <article className="library-overview-card">
-          <span>На экране</span>
-          <strong>{formatFullNumber(activeVisibleArticles.length)}</strong>
-          <small>{activeHasMoreArticles ? 'Можно загрузить ещё' : 'Текущая выдача полная'}</small>
-        </article>
+          <article className="library-overview-card">
+            <span>На экране</span>
+            <strong>{formatFullNumber(activeVisibleArticles.length)}</strong>
+            <small>{activeHasMoreArticles ? 'Можно загрузить ещё' : 'Текущая выдача полная'}</small>
+          </article>
 
-        <article className="library-overview-card">
-          <span>Фильтр</span>
-          <strong>{articleRarityFilter ? rarityLevels[articleRarityFilter]?.name || articleRarityFilter : 'Все редкости'}</strong>
-          <small>{articleSearchQuery ? `Поиск: ${articleSearchQuery}` : 'Без текстового фильтра'}</small>
-        </article>
-      </div>
+          <article className="library-overview-card">
+            <span>Фильтр</span>
+            <strong>{articleRarityFilter ? rarityLevels[articleRarityFilter]?.name || articleRarityFilter : 'Все редкости'}</strong>
+            <small>{articleSearchQuery ? `Поиск: ${articleSearchQuery}` : 'Без текстового фильтра'}</small>
+          </article>
+        </div>
+      ) : null}
 
       <div className="library-list" onScroll={handleLibraryScroll} ref={listRef}>
         {activeVisibleArticles.map((article) => {

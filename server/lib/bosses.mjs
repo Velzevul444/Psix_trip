@@ -18,18 +18,23 @@ import {
   buildArticleStatsGroupByColumns,
   buildArticleStatsProjection,
   buildArticleStatsProjectionForAlias,
+  ensureArticlesTable,
+  ensureArticleStatsColumns,
   ensureUserArticleDropsTable,
   hasArticleStatsColumns,
   serializeArticleRow
 } from './articles.mjs';
+import { ensureUsersTable } from './auth.mjs';
 
 let hasBossesTableCache = false;
 let hasBossCardDefeatsTableCache = false;
 
-async function ensureBossesTable() {
+export async function ensureBossesTable() {
   if (hasBossesTableCache) {
     return;
   }
+
+  await ensureArticlesTable();
 
   await pool.query(
     `
@@ -52,12 +57,13 @@ async function ensureBossesTable() {
   hasBossesTableCache = true;
 }
 
-async function ensureBossCardDefeatsTable() {
+export async function ensureBossCardDefeatsTable() {
   if (hasBossCardDefeatsTableCache) {
     return;
   }
 
   await ensureBossesTable();
+  await ensureUsersTable();
 
   await pool.query(
     `
@@ -184,6 +190,7 @@ async function pickRandomDivineArticleRow(rarityLevels, includeStatsColumns, db 
 
 export async function getOrCreateCurrentBoss(rarityLevels) {
   await ensureBossesTable();
+  await ensureArticleStatsColumns();
 
   const includeStatsColumns = await hasArticleStatsColumns();
   let bossResult = await pool.query(

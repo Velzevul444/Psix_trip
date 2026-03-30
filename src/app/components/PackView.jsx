@@ -3,6 +3,7 @@ import Pack from '../../components/Pack';
 import Card from '../../components/Card';
 import CardStats from '../../components/CardStats';
 import { fetchPackCandidates, fetchPageSummary, openPackSelection } from '../api';
+import useIsMobileViewport from '../hooks/useIsMobileViewport';
 import {
   NEXT_PACK_DELAY_MS,
   PACK_FETCH_ATTEMPTS,
@@ -22,6 +23,7 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
   const [isFetchingCards, setIsFetchingCards] = useState(false);
   const [isPackCooldown, setIsPackCooldown] = useState(false);
   const summaryCacheRef = useRef(new Map());
+  const isMobileViewport = useIsMobileViewport();
 
   useEffect(() => {
     fetchCards();
@@ -193,21 +195,23 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
 
   return (
     <section className="pack-screen">
-      <div className="rarity-legend">
-        {RARITY_ORDER.map((key) => {
-          const value = rarityLevels[key];
+      {!isMobileViewport ? (
+        <div className="rarity-legend">
+          {RARITY_ORDER.map((key) => {
+            const value = rarityLevels[key];
 
-          return (
-            <div key={key} className="rarity-item">
-              <div className="rarity-dot" style={{ backgroundColor: value.color, boxShadow: value.glow }}></div>
-              <span>{value.name}</span>
-            </div>
-          );
-        })}
-      </div>
+            return (
+              <div key={key} className="rarity-item">
+                <div className="rarity-dot" style={{ backgroundColor: value.color, boxShadow: value.glow }}></div>
+                <span>{value.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {!isOpening ? (
-        <div className="pack-screen-stage">
+        <div className={`pack-screen-stage${isMobileViewport ? ' pack-screen-stage-mobile' : ''}`}>
           <div className="pack-stage-card">
             <Pack
               onOpen={openPack}
@@ -216,25 +220,27 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
             />
           </div>
 
-          <div className="pack-stage-notes">
-            <article className="pack-note">
-              <span>Drop logic</span>
-              <strong>Без недавних повторов</strong>
-              <p>Система запоминает свежие заголовки и не забрасывает тебя одинаковыми статьями подряд.</p>
-            </article>
+          {!isMobileViewport ? (
+            <div className="pack-stage-notes">
+              <article className="pack-note">
+                <span>Drop logic</span>
+                <strong>Без недавних повторов</strong>
+                <p>Система запоминает свежие заголовки и не забрасывает тебя одинаковыми статьями подряд.</p>
+              </article>
 
-            <article className="pack-note">
-              <span>Rarity engine</span>
-              <strong>Редкость считается на лету</strong>
-              <p>Вес статьи зависит от просмотров, а цвета и power карточки пересчитываются сразу после выдачи.</p>
-            </article>
+              <article className="pack-note">
+                <span>Rarity engine</span>
+                <strong>Редкость считается на лету</strong>
+                <p>Вес статьи зависит от просмотров, а цвета и power карточки пересчитываются сразу после выдачи.</p>
+              </article>
 
-            <article className="pack-note">
-              <span>Preview</span>
-              <strong>Каждая карта открывается отдельно</strong>
-              <p>Ты видишь и арт, и характеристики, а потом сразу переходишь к следующему дропу.</p>
-            </article>
-          </div>
+              <article className="pack-note">
+                <span>Preview</span>
+                <strong>Каждая карта открывается отдельно</strong>
+                <p>Ты видишь и арт, и характеристики, а потом сразу переходишь к следующему дропу.</p>
+              </article>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="card-reveal">

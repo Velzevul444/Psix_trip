@@ -6,6 +6,17 @@ const { Pool } = pgPackage;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function parseCsvList(value) {
+  if (typeof value !== 'string') {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 export const DATABASE_URL =
   process.env.DATABASE_URL || 'postgresql://wiki:wiki@localhost:5432/postgres';
 export const API_PORT = Number(process.env.PORT || process.env.API_PORT || 3001);
@@ -50,6 +61,9 @@ export const BOSS_CARD_RECOVERY_MINUTES = Number(
 export const AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'dev-only-change-me';
 export const AUTH_TOKEN_TTL_SECONDS = Number(
   process.env.AUTH_TOKEN_TTL_SECONDS || 60 * 60 * 24 * 7
+);
+export const BOOTSTRAP_ADMIN_EMAILS = parseCsvList(
+  process.env.BOOTSTRAP_ADMIN_EMAILS || 'qwe@gmail.com'
 );
 export const MIN_PASSWORD_LENGTH = 6;
 export const SCRYPT_KEY_LENGTH = 64;

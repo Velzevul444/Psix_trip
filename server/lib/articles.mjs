@@ -18,8 +18,9 @@ import {
 } from './config.mjs';
 import { HttpError } from './errors.mjs';
 import { clamp } from './utils.mjs';
-import { findUserById, serializeUser } from './auth.mjs';
+import { ensureUsersTable, findUserById, serializeUser } from './auth.mjs';
 
+let hasArticlesTableCache = false;
 let hasArticleStatsColumnsCache = null;
 let hasUserArticleDropsTableCache = false;
 
@@ -38,6 +39,8 @@ export function normalizeExcludedTitles(value) {
 }
 
 export async function hasArticleStatsColumns() {
+  await ensureArticlesTable();
+
   if (hasArticleStatsColumnsCache !== null) {
     return hasArticleStatsColumnsCache;
   }
@@ -57,10 +60,60 @@ export async function hasArticleStatsColumns() {
   return hasArticleStatsColumnsCache;
 }
 
+export async function ensureArticlesTable() {
+  if (hasArticlesTableCache) {
+    return;
+  }
+
+  await pool.query(
+    `
+      CREATE TABLE IF NOT EXISTS ${FINAL_TABLE} (
+        id BIGINT PRIMARY KEY,
+        title TEXT NOT NULL UNIQUE,
+        view_count BIGINT NOT NULL DEFAULT 0
+      )
+    `
+  );
+
+  await pool.query(
+    `
+      CREATE INDEX IF NOT EXISTS ${FINAL_TABLE}_view_count_idx
+      ON ${FINAL_TABLE} (view_count DESC)
+    `
+  );
+
+  hasArticlesTableCache = true;
+}
+
+export async function ensureArticleStatsColumns() {
+  await ensureArticlesTable();
+
+  if (hasArticleStatsColumnsCache === true) {
+    return;
+  }
+
+  await pool.query(
+    `
+      ALTER TABLE ${FINAL_TABLE}
+      ADD COLUMN IF NOT EXISTS hp INTEGER,
+      ADD COLUMN IF NOT EXISTS stamina INTEGER,
+      ADD COLUMN IF NOT EXISTS strength INTEGER,
+      ADD COLUMN IF NOT EXISTS dexterity INTEGER,
+      ADD COLUMN IF NOT EXISTS intelligence INTEGER,
+      ADD COLUMN IF NOT EXISTS charisma INTEGER
+    `
+  );
+
+  hasArticleStatsColumnsCache = true;
+}
+
 export async function ensureUserArticleDropsTable() {
   if (hasUserArticleDropsTableCache) {
     return;
   }
+
+  await ensureUsersTable();
+  await ensureArticlesTable();
 
   await pool.query(
     `
@@ -323,6 +376,8 @@ export async function recordUserPackDropIds(userId, articleIds) {
 }
 
 export async function loadAdminUsers(search, limit) {
+  await ensureUsersTable();
+
   const normalizedSearch = normalizeAdminUserSearch(search);
   const safeLimit = clamp(
     Number(limit) || ADMIN_USER_SEARCH_LIMIT_DEFAULT,
@@ -413,6 +468,8 @@ export async function grantArticleToUser(targetUserId, articleId, rarityLevels) 
 }
 
 export async function loadArticlesPage(offset, limit, rarityLevels, options = {}) {
+  await ensureArticlesTable();
+
   const includeStatsColumns = await hasArticleStatsColumns();
   const safeOffset = Math.max(Number(offset) || 0, 0);
   const safeLimit = clamp(Number(limit) || ARTICLES_PAGE_LIMIT_DEFAULT, 1, ARTICLES_PAGE_LIMIT_MAX);

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Card from '../../components/Card';
 import CardStats from '../../components/CardStats';
 import { fetchCurrentBoss, fetchMyArticlesPage, fetchPageSummary, submitBossBattle } from '../api';
+import useIsMobileViewport from '../hooks/useIsMobileViewport';
 import { BOSS_TEAM_SEARCH_LIMIT, BOSS_TEAM_SIZE } from '../constants';
 import {
   buildCardData,
@@ -10,6 +11,7 @@ import {
   getStatLabel,
   resolveArticleRarity
 } from '../utils';
+import BossMobileView from './BossMobileView';
 
 function BossView({
   authUser,
@@ -36,6 +38,7 @@ function BossView({
   const [isBossBattleSubmitting, setIsBossBattleSubmitting] = useState(false);
   const summaryCacheRef = useRef(new Map());
   const bossTeamRequestIdRef = useRef(0);
+  const isMobileViewport = useIsMobileViewport();
 
   useEffect(() => {
     loadBoss();
@@ -305,6 +308,37 @@ function BossView({
   const bossHpPercent = bossDisplayCard?.maxHp
     ? Math.max(0, Math.min(100, Math.round((bossDisplayCard.remainingHp / bossDisplayCard.maxHp) * 100)))
     : 0;
+
+  if (isMobileViewport) {
+    return (
+      <BossMobileView
+        authUser={authUser}
+        rarityLevels={rarityLevels}
+        bossError={bossError}
+        isBossLoading={isBossLoading}
+        bossDisplayCard={bossDisplayCard}
+        bossHpPercent={bossHpPercent}
+        selectedBossTeam={selectedBossTeam}
+        bossTeamSearchInput={bossTeamSearchInput}
+        onBossTeamSearchInputChange={(nextValue) => {
+          setBossTeamSearchInput(nextValue);
+          resetBossBattleState();
+        }}
+        isBossTeamLoading={isBossTeamLoading}
+        bossTeamError={bossTeamError}
+        bossTeamCandidatesPool={bossTeamCandidatesPool}
+        bossBattleError={bossBattleError}
+        bossBattleResult={bossBattleResult}
+        isBossBattleSubmitting={isBossBattleSubmitting}
+        addBossTeamMember={addBossTeamMember}
+        removeBossTeamMember={removeBossTeamMember}
+        getCardCooldown={getCardCooldown}
+        formatCooldownRemaining={formatCooldownRemaining}
+        handleBossBattleSubmit={handleBossBattleSubmit}
+        loadBoss={loadBoss}
+      />
+    );
+  }
 
   return (
     <section className="boss-screen">

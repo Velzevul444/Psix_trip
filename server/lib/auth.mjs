@@ -6,6 +6,7 @@ import {
 } from 'node:crypto';
 import { promisify } from 'node:util';
 import {
+  BOOTSTRAP_ADMIN_EMAILS,
   AUTH_TOKEN_SECRET,
   AUTH_TOKEN_TTL_SECONDS,
   MIN_PASSWORD_LENGTH,
@@ -17,6 +18,7 @@ import {
 import { HttpError } from './errors.mjs';
 
 const scrypt = promisify(scryptCallback);
+let hasUsersTableCache = false;
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -148,7 +150,59 @@ function buildAuthResponse(row) {
   };
 }
 
+export async function ensureUsersTable() {
+  if (hasUsersTableCache) {
+    return;
+  }
+
+  await pool.query(
+    `
+      CREATE TABLE IF NOT EXISTS ${USERS_TABLE} (
+        id BIGSERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `
+  );
+
+  hasUsersTableCache = true;
+}
+
+export async function promoteBootstrapAdmins(emails = BOOTSTRAP_ADMIN_EMAILS) {
+  const normalizedEmails = Array.from(
+    new Set(
+      (Array.isArray(emails) ? emails : [])
+        .map((entry) => normalizeEmail(entry))
+        .filter(Boolean)
+    )
+  );
+
+  if (normalizedEmails.length === 0) {
+    return [];
+  }
+
+  await ensureUsersTable();
+
+  const result = await pool.query(
+    `
+      UPDATE ${USERS_TABLE}
+      SET is_admin = TRUE
+      WHERE LOWER(email) = ANY($1::text[])
+        AND is_admin = FALSE
+      RETURNING email
+    `,
+    [normalizedEmails]
+  );
+
+  return result.rows.map((row) => row.email);
+}
+
 async function findUserByLogin(login) {
+  await ensureUsersTable();
+
   const result = await pool.query(
     `
       SELECT id, username, email, password_hash, is_admin, created_at
@@ -164,6 +218,8 @@ async function findUserByLogin(login) {
 }
 
 export async function findUserById(id) {
+  await ensureUsersTable();
+
   const result = await pool.query(
     `
       SELECT id, username, email, password_hash, is_admin, created_at
@@ -224,17 +280,22 @@ function validateLoginInput(body) {
 }
 
 export async function registerUser(body) {
+  await ensureUsersTable();
+
   const { username, email, password } = validateRegistrationInput(body);
   const passwordHash = await hashPassword(password);
+  const shouldGrantBootstrapAdmin = BOOTSTRAP_ADMIN_EMAILS
+    .map((entry) => normalizeEmail(entry))
+    .includes(email);
 
   try {
     const result = await pool.query(
       `
         INSERT INTO ${USERS_TABLE} (username, email, password_hash, is_admin)
-        VALUES ($1, $2, $3, FALSE)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, username, email, password_hash, is_admin, created_at
       `,
-      [username, email, passwordHash]
+      [username, email, passwordHash, shouldGrantBootstrapAdmin]
     );
 
     return buildAuthResponse(result.rows[0]);
@@ -256,6 +317,8 @@ export async function registerUser(body) {
 }
 
 export async function loginUser(body) {
+  await ensureUsersTable();
+
   const { login, password } = validateLoginInput(body);
   const user = await findUserByLogin(login);
 
