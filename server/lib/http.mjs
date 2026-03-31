@@ -18,11 +18,17 @@ export function sendNoContent(response) {
   response.end();
 }
 
-export function sendStatic(response, statusCode, body, contentType) {
-  response.writeHead(statusCode, {
+export function sendStatic(response, statusCode, body, contentType, contentLength) {
+  const headers = {
     'Content-Type': contentType,
     'Cache-Control': contentType.includes('text/html') ? 'no-cache' : 'public, max-age=3600'
-  });
+  };
+
+  if (typeof contentLength === 'number' && Number.isFinite(contentLength)) {
+    headers['Content-Length'] = String(contentLength);
+  }
+
+  response.writeHead(statusCode, headers);
   response.end(body);
 }
 

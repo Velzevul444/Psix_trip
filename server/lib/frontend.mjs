@@ -50,7 +50,8 @@ export async function tryServeFrontend(request, response, url) {
   }
 
   const contentType = getStaticContentType(filePath);
+  const fileStats = await stat(filePath);
   const body = request.method === 'HEAD' ? '' : await readFile(filePath);
-  sendStatic(response, 200, body, contentType);
+  sendStatic(response, 200, body, contentType, fileStats.size);
   return true;
 }

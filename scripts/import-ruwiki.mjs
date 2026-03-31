@@ -25,12 +25,21 @@ const FINAL_TABLE = 'wiki_articles';
 const RAW_PAGEVIEWS_STAGE_TABLE = 'wiki_pageviews_raw_stage';
 const FILTERED_PAGEVIEWS_STAGE_TABLE = 'wiki_pageviews_filtered_stage';
 const ARTICLES_STAGE_TABLE = 'wiki_articles_stage';
-const PAGEVIEWS_LOG_INTERVAL = 500_000;
-const ARTICLES_LOG_INTERVAL = 500_000;
+const PAGEVIEWS_LOG_INTERVAL = Number(process.env.PAGEVIEWS_LOG_INTERVAL || 100_000);
+const ARTICLES_LOG_INTERVAL = Number(process.env.ARTICLES_LOG_INTERVAL || 100_000);
 const CONTROL_CHARS_PATTERN = /[\u0000-\u001F\u007F]/g;
+let curlRetryAllErrorsSupportPromise;
 
 function log(message) {
   console.log(`[${new Date().toISOString()}] ${message}`);
+}
+
+function installSignalHandlers() {
+  if (process.platform !== 'win32') {
+    process.on('SIGHUP', () => {
+      log('Received SIGHUP. Ignoring it and continuing the import.');
+    });
+  }
 }
 
 function printHelp() {
@@ -39,6 +48,8 @@ function printHelp() {
 Environment variables:
   DATABASE_URL               PostgreSQL connection string
   MIN_VIEW_COUNT             Minimum total views required, default: 1000
+  PAGEVIEWS_LOG_INTERVAL     Progress log interval for raw pageviews, default: 100000
+  ARTICLES_LOG_INTERVAL      Progress log interval for article index, default: 100000
   RUWIKI_INDEX_URL           Optional override for the article index dump
   PAGEVIEWS_MONTHLY_BASE_URL Optional override for the monthly dump directory
   PAGEVIEWS_DUMP_URL         Optional override for a конкретный pageviews dump
@@ -130,6 +141,31 @@ function ensureBinary(name) {
   });
 }
 
+function detectCurlRetryAllErrorsSupport() {
+  if (!curlRetryAllErrorsSupportPromise) {
+    curlRetryAllErrorsSupportPromise = new Promise((resolve, reject) => {
+      const stdoutChunks = [];
+      const child = spawn('curl', ['--help', 'all'], {
+        stdio: ['ignore', 'pipe', 'ignore']
+      });
+
+      child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
+      child.on('error', reject);
+      child.on('exit', (code) => {
+        if (code !== 0) {
+          resolve(false);
+          return;
+        }
+
+        const helpText = Buffer.concat(stdoutChunks).toString('utf8');
+        resolve(helpText.includes('--retry-all-errors'));
+      });
+    });
+  }
+
+  return curlRetryAllErrorsSupportPromise;
+}
+
 function waitForSingleProcess(child, label, stderrChunks) {
   return new Promise((resolve, reject) => {
     child.on('error', reject);
@@ -178,23 +214,24 @@ async function downloadFile(url, destinationPath) {
   log(`Downloading dump to ${destinationPath}`);
   const tempPath = `${destinationPath}.part`;
   await fs.rm(tempPath, { force: true });
+  const supportsRetryAllErrors = await detectCurlRetryAllErrorsSupport();
+  const curlArgs = [
+    '-fL',
+    '--retry', '8',
+    '--retry-delay', '5',
+    '-A', USER_AGENT,
+    '-o', tempPath,
+    url
+  ];
+
+  if (supportsRetryAllErrors) {
+    curlArgs.splice(3, 0, '--retry-all-errors');
+  }
 
   const stderrChunks = [];
-  const curl = spawn(
-    'curl',
-    [
-      '-fL',
-      '--retry', '8',
-      '--retry-all-errors',
-      '--retry-delay', '5',
-      '-A', USER_AGENT,
-      '-o', tempPath,
-      url
-    ],
-    {
-      stdio: ['ignore', 'ignore', 'pipe']
-    }
-  );
+  const curl = spawn('curl', curlArgs, {
+    stdio: ['ignore', 'ignore', 'pipe']
+  });
 
   curl.stderr.on('data', (chunk) => stderrChunks.push(chunk));
   try {
@@ -483,7 +520,8 @@ async function buildFinalTable(client) {
   await client.query('BEGIN');
 
   try {
-    await client.query(`TRUNCATE TABLE ${FINAL_TABLE}`);
+    // DELETE works with ON DELETE CASCADE foreign keys created by the API bootstrap.
+    await client.query(`DELETE FROM ${FINAL_TABLE}`);
 
     await client.query(`
       WITH deduplicated_articles AS (
@@ -522,6 +560,7 @@ async function main() {
     return;
   }
 
+  installSignalHandlers();
   await Promise.all([ensureBinary('curl'), ensureBinary('bunzip2')]);
 
   const { month, url } = await discoverLatestPageviewsDump();

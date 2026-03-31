@@ -81,10 +81,13 @@ export function createDeterministicRandom(seedInput) {
 
 export function generateCardStats(rarity, randomFn = Math.random) {
   const ranges = STAT_RANGES_BY_RARITY[rarity] || STAT_RANGES_BY_RARITY.common;
+  const stats = {};
 
-  return Object.fromEntries(
-    Object.entries(ranges).map(([stat, [min, max]]) => [stat, randomInteger(min, max, randomFn())])
-  );
+  for (const [stat, [min, max]] of Object.entries(ranges)) {
+    stats[stat] = randomInteger(min, max, randomFn());
+  }
+
+  return stats;
 }
 
 export function generateDeterministicCardStats(rarity, seedInput) {
