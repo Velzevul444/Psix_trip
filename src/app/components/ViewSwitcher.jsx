@@ -17,13 +17,9 @@ function ViewSwitcher({
         aria-label="Показать все статьи"
       >
         <svg className="view-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <rect className="view-icon-accent" x="4.75" y="3.75" width="14.5" height="16.5" rx="3.4" />
-          <path d="M7.9 8h8.2" />
-          <path d="M7.9 11.55h8.2" />
-          <path d="M7.9 15.1h5.35" />
-          <path d="M6 8h.01" />
-          <path d="M6 11.55h.01" />
-          <path d="M6 15.1h.01" />
+          <path className="view-icon-accent" d="M19 17V5a2 2 0 0 0-2-2H4v14a4 4 0 0 0 4 4h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1z" />
+          <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+          <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
         </svg>
       </button>
 
@@ -35,12 +31,15 @@ function ViewSwitcher({
       >
         <svg className="view-icon-svg pack-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
           <path
-            className="view-icon-accent"
-            d="M7.1 4.7h9.8l2 2.45v11.05a2.35 2.35 0 0 1-2.35 2.35H7.45A2.35 2.35 0 0 1 5.1 18.2V7.15Z"
+            d="M6.7 6.35 7.8 4.55 8.9 6.35 10.05 4.55 11.15 6.35 12.3 4.55 13.45 6.35 14.6 4.55 15.75 6.35 16.85 4.55 17.35 6.35"
           />
-          <path d="M7.1 7.15h11.8" />
-          <path d="M9.4 4.7 11 7.15h2l1.6-2.45" />
-          <path d="m12 10.15.62 1.37 1.5.24-1.08 1.04.26 1.49L12 13.53l-1.3.76.26-1.49-1.08-1.04 1.5-.24Z" />
+          <path d="M6.7 6.35V17.6" />
+          <path d="M17.35 6.35V17.6" />
+          <path d="M6.7 6.35H17.35" />
+          <path d="M6.7 17.8H17.35" />
+          <path
+            d="M6.7 17.6 7.65 19.45 8.75 17.6 9.85 19.45 10.95 17.6 12.05 19.45 13.15 17.6 14.3 19.45 15.45 17.6 16.45 19.45 17.35 17.6"
+          />
         </svg>
       </button>
 
@@ -51,11 +50,13 @@ function ViewSwitcher({
         aria-label="Показать мои выбитые статьи"
       >
         <svg className="view-icon-svg collection-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <rect className="view-icon-accent" x="7.45" y="5.15" width="10.8" height="13.4" rx="2.8" />
-          <path d="M5.25 15.9V7.35A2.6 2.6 0 0 1 7.85 4.75h6.5" />
-          <path d="M10 10.55h5.65" />
-          <path d="M10 13.9h4.1" />
-          <path d="m12.25 7.15.52 1.08 1.2.17-.86.84.21 1.2-1.07-.57-1.07.57.2-1.2-.86-.84 1.2-.17Z" />
+          <path
+            className="view-icon-accent"
+            d="m3.604 7.197 7.138 -3.109a0.96 0.96 0 0 1 1.27 0.527l4.924 11.902a1 1 0 0 1 -0.514 1.304L9.285 20.93a0.96 0.96 0 0 1 -1.271 -0.527L3.09 8.5a1 1 0 0 1 0.514 -1.304z"
+          />
+          <path d="m3.604 7.197 7.138 -3.109a0.96 0.96 0 0 1 1.27 0.527l4.924 11.902a1 1 0 0 1 -0.514 1.304L9.285 20.93a0.96 0.96 0 0 1 -1.271 -0.527L3.09 8.5a1 1 0 0 1 0.514 -1.304z" />
+          <path d="M15 4h1a1 1 0 0 1 1 1v3.5" />
+          <path d="M20 6c0.264 0.112 0.52 0.217 0.768 0.315a1 1 0 0 1 0.53 1.311L19 13" />
         </svg>
       </button>
 
@@ -66,15 +67,10 @@ function ViewSwitcher({
         aria-label="Показать экран боя с боссом"
       >
         <svg className="view-icon-svg boss-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            className="view-icon-accent"
-            d="M12 20.15c4.42-1.19 6.65-3.9 6.65-8.15V7.15L12 4.55 5.35 7.15V12c0 4.25 2.23 6.96 6.65 8.15Z"
-          />
-          <path d="M8.55 7.2 10.1 5.35 12 6.95l1.9-1.6 1.55 1.85" />
-          <path d="M10.05 11.05h.01" />
-          <path d="M13.95 11.05h.01" />
-          <path d="M9.85 14.45c1.28 1 3.02 1 4.3 0" />
-          <path d="M12 8.9v3.45" />
+          <path className="view-icon-accent" d="m12.5 17-.5-1-.5 1h1z" />
+          <path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z" />
+          <circle cx="15" cy="12" r="1" />
+          <circle cx="9" cy="12" r="1" />
         </svg>
       </button>
     </div>

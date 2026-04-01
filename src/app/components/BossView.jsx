@@ -36,6 +36,7 @@ function BossView({
   const [bossBattleResult, setBossBattleResult] = useState(null);
   const [bossBattleError, setBossBattleError] = useState('');
   const [isBossBattleSubmitting, setIsBossBattleSubmitting] = useState(false);
+  const [activeDesktopTab, setActiveDesktopTab] = useState('team');
   const summaryCacheRef = useRef(new Map());
   const bossTeamRequestIdRef = useRef(0);
   const isMobileViewport = useIsMobileViewport();
@@ -48,8 +49,21 @@ function BossView({
     if (!authUser) {
       resetBossSelection();
       setCardCooldowns([]);
+      setActiveDesktopTab('team');
     }
   }, [authUser]);
+
+  useEffect(() => {
+    if (bossBattleResult) {
+      setActiveDesktopTab('log');
+    }
+  }, [bossBattleResult]);
+
+  useEffect(() => {
+    if (!bossBattleResult && activeDesktopTab === 'log') {
+      setActiveDesktopTab('team');
+    }
+  }, [activeDesktopTab, bossBattleResult]);
 
   useEffect(() => {
     setCooldownNow(Date.now());
@@ -221,7 +235,7 @@ function BossView({
         return current;
       }
 
-      return [...current, article];
+      return [article, ...current];
     });
   };
 
@@ -270,12 +284,52 @@ function BossView({
     }
   };
 
-  const bossTeamCandidatesPool = bossTeamCandidates.filter(
-    (article) => !selectedBossTeam.some((selectedArticle) => selectedArticle.id === article.id)
-  );
+  const selectedBossTeamIdSet = new Set(selectedBossTeam.map((article) => article.id));
+  const selectedBossTeamOrder = new Map(selectedBossTeam.map((article, index) => [article.id, index]));
   const cooldownsByArticleId = new Map(
     cardCooldowns.map((cooldown) => [Number(cooldown.articleId), cooldown])
   );
+  const isArticleCoolingDown = (articleId) => {
+    const cooldown = cooldownsByArticleId.get(Number(articleId));
+
+    if (!cooldown) {
+      return false;
+    }
+
+    const availableAtMs = new Date(cooldown.availableAt).getTime();
+    return Number.isFinite(availableAtMs) && availableAtMs > cooldownNow;
+  };
+  const bossTeamCandidatesPool = bossTeamCandidates.filter(
+    (article) => !selectedBossTeamIdSet.has(article.id)
+  );
+  const orderedBossTeamCandidates = bossTeamCandidates
+    .map((article, index) => ({ article, index }))
+    .sort((left, right) => {
+      const leftSelected = selectedBossTeamOrder.has(left.article.id);
+      const rightSelected = selectedBossTeamOrder.has(right.article.id);
+
+      if (leftSelected && rightSelected) {
+        return selectedBossTeamOrder.get(left.article.id) - selectedBossTeamOrder.get(right.article.id);
+      }
+
+      if (leftSelected) {
+        return -1;
+      }
+
+      if (rightSelected) {
+        return 1;
+      }
+
+      const leftCoolingDown = isArticleCoolingDown(left.article.id);
+      const rightCoolingDown = isArticleCoolingDown(right.article.id);
+
+      if (leftCoolingDown !== rightCoolingDown) {
+        return leftCoolingDown ? 1 : -1;
+      }
+
+      return left.index - right.index;
+    })
+    .map(({ article }) => article);
   const getCardCooldown = (articleId) => {
     const cooldown = cooldownsByArticleId.get(Number(articleId));
 
@@ -308,6 +362,7 @@ function BossView({
   const bossHpPercent = bossDisplayCard?.maxHp
     ? Math.max(0, Math.min(100, Math.round((bossDisplayCard.remainingHp / bossDisplayCard.maxHp) * 100)))
     : 0;
+  const showDesktopLogTab = Boolean(bossBattleResult);
 
   if (isMobileViewport) {
     return (
@@ -404,114 +459,122 @@ function BossView({
                   <div className="library-status">Войди в аккаунт, чтобы выбрать 5 своих статей и начать бой.</div>
                 ) : (
                   <>
-                    <div className="boss-team-panel">
-                      <div className="boss-team-top">
-                        <div>
-                          <div className="library-kicker">Твоя команда</div>
-                          <h3>Выбери 5 карт</h3>
-                        </div>
-                        <div className="boss-team-count">
-                          {selectedBossTeam.length}/{BOSS_TEAM_SIZE}
-                        </div>
-                      </div>
-
-                      <label className="admin-panel-field boss-search-field">
-                        <span>Поиск по своей коллекции</span>
-                        <input
-                          type="text"
-                          value={bossTeamSearchInput}
-                          onChange={(event) => {
-                            setBossTeamSearchInput(event.target.value);
-                            resetBossBattleState();
-                          }}
-                          placeholder="Название статьи"
-                        />
-                      </label>
-
-                      <div className="boss-selected-team">
-                        {selectedBossTeam.length > 0 ? (
-                          selectedBossTeam.map((article) => {
-                            const rarity = resolveArticleRarity(article, rarityLevels);
-                            const rarityData = rarityLevels[rarity];
-
-                            return (
-                              <button
-                                key={article.id}
-                                type="button"
-                                className="boss-selected-card"
-                                onClick={() => removeBossTeamMember(article.id)}
-                              >
-                                <div>
-                                  <strong>{article.title}</strong>
-                                  <span style={{ color: rarityData?.color || '#fff' }}>
-                                    {rarityData?.name || rarity}
-                                  </span>
-                                </div>
-                                <em>Убрать</em>
-                              </button>
-                            );
-                          })
-                        ) : (
-                          <div className="auth-status">Пока не выбрано ни одной карты.</div>
-                        )}
-                      </div>
-
-                      <div className="admin-search-results boss-search-results">
-                        {isBossTeamLoading ? (
-                          <div className="auth-status">Ищем карты из твоей коллекции...</div>
-                        ) : bossTeamError ? (
-                          <div className="auth-error">{bossTeamError}</div>
-                        ) : bossTeamCandidatesPool.length > 0 ? (
-                          bossTeamCandidatesPool.map((article) => {
-                            const rarity = resolveArticleRarity(article, rarityLevels);
-                            const rarityData = rarityLevels[rarity];
-                            const cardCooldown = getCardCooldown(article.id);
-                            const isCoolingDown = Boolean(cardCooldown);
-
-                            return (
-                              <button
-                                key={article.id}
-                                type="button"
-                                className={`admin-search-result ${isCoolingDown ? 'cooldown-active' : ''}`}
-                                onClick={() => addBossTeamMember(article)}
-                                disabled={selectedBossTeam.length >= BOSS_TEAM_SIZE || isCoolingDown}
-                              >
-                                <div>
-                                  <strong>{article.title}</strong>
-                                  <span>{rarityData?.name || rarity}</span>
-                                  {isCoolingDown ? (
-                                    <span className="boss-cooldown-note">
-                                      Восстановление через {formatCooldownRemaining(cardCooldown.remainingMs)}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <em className={isCoolingDown ? 'boss-cooldown-timer' : ''}>
-                                  {isCoolingDown
-                                    ? formatCooldownRemaining(cardCooldown.remainingMs)
-                                    : formatCompactNumber(article.viewCount)}
-                                </em>
-                              </button>
-                            );
-                          })
-                        ) : (
-                          <div className="auth-status">
-                            {bossTeamSearchQuery ? 'Ничего не найдено в твоей коллекции.' : 'Открой паки и выбей хотя бы 5 уникальных карт.'}
-                          </div>
-                        )}
-                      </div>
-
-                      {bossBattleError ? <div className="auth-error">{bossBattleError}</div> : null}
-
-                      {bossDisplayCard.status === 'defeated' ? (
-                        <div className="boss-action-row">
-                          <button type="button" className="library-more-btn" onClick={loadBoss}>
-                            Новый босс
-                          </button>
-                        </div>
+                    <div className="boss-mobile-tabs boss-desktop-tabs" role="tablist" aria-label="Режимы рейда">
+                      <button
+                        type="button"
+                        className={`boss-mobile-tab ${activeDesktopTab === 'team' ? 'active' : ''}`}
+                        onClick={() => setActiveDesktopTab('team')}
+                      >
+                        Выбор карт
+                      </button>
+                      {showDesktopLogTab ? (
+                        <button
+                          type="button"
+                          className={`boss-mobile-tab ${activeDesktopTab === 'log' ? 'active' : ''}`}
+                          onClick={() => setActiveDesktopTab('log')}
+                        >
+                          Логи
+                        </button>
                       ) : null}
                     </div>
 
-                    {bossBattleResult ? (
+                    {activeDesktopTab === 'team' ? (
+                      <div className="boss-team-panel">
+                        <div className="boss-team-top">
+                          <div>
+                            <div className="library-kicker">Твоя команда</div>
+                            <h3>Выбери 5 карт</h3>
+                          </div>
+                          <div className="boss-team-count">
+                            {selectedBossTeam.length}/{BOSS_TEAM_SIZE}
+                          </div>
+                        </div>
+
+                        <div className="boss-team-body">
+                          <label className="admin-panel-field boss-search-field">
+                            <span>Поиск по своей коллекции</span>
+                            <input
+                              type="text"
+                              value={bossTeamSearchInput}
+                              onChange={(event) => {
+                                setBossTeamSearchInput(event.target.value);
+                                resetBossBattleState();
+                              }}
+                              placeholder="Название статьи"
+                            />
+                          </label>
+
+                          <div className="admin-search-results boss-search-results">
+                            {isBossTeamLoading ? (
+                              <div className="auth-status">Ищем карты из твоей коллекции...</div>
+                            ) : bossTeamError ? (
+                              <div className="auth-error">{bossTeamError}</div>
+                            ) : orderedBossTeamCandidates.length > 0 ? (
+                              orderedBossTeamCandidates.map((article) => {
+                                const rarity = resolveArticleRarity(article, rarityLevels);
+                                const rarityData = rarityLevels[rarity];
+                                const cardCooldown = getCardCooldown(article.id);
+                                const isCoolingDown = Boolean(cardCooldown);
+                                const isSelected = selectedBossTeamIdSet.has(article.id);
+                                const isDisabled = !isSelected && (selectedBossTeam.length >= BOSS_TEAM_SIZE || isCoolingDown);
+
+                                return (
+                                  <button
+                                    key={article.id}
+                                    type="button"
+                                    className={`admin-search-result ${isCoolingDown ? 'cooldown-active' : ''} ${isSelected ? 'selected' : ''}`}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        removeBossTeamMember(article.id);
+                                        return;
+                                      }
+
+                                      addBossTeamMember(article);
+                                    }}
+                                    disabled={isDisabled}
+                                  >
+                                    <div>
+                                      <strong>{article.title}</strong>
+                                      <span>{rarityData?.name || rarity}</span>
+                                      {isSelected ? (
+                                        <span className="boss-selected-note">Уже в команде</span>
+                                      ) : isCoolingDown ? (
+                                        <span className="boss-cooldown-note">
+                                          Восстановление через {formatCooldownRemaining(cardCooldown.remainingMs)}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <em className={isCoolingDown ? 'boss-cooldown-timer' : ''}>
+                                      {isSelected
+                                        ? 'Убрать'
+                                        : isCoolingDown
+                                        ? formatCooldownRemaining(cardCooldown.remainingMs)
+                                        : formatCompactNumber(article.viewCount)}
+                                    </em>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="auth-status">
+                                {bossTeamSearchQuery
+                                  ? 'Ничего не найдено в твоей коллекции.'
+                                  : 'Открой паки и выбей хотя бы 5 уникальных карт.'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {bossBattleError ? <div className="auth-error">{bossBattleError}</div> : null}
+
+                        {bossDisplayCard.status === 'defeated' ? (
+                          <div className="boss-action-row">
+                            <button type="button" className="library-more-btn" onClick={loadBoss}>
+                              Новый босс
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : bossBattleResult ? (
                       <div className="boss-battle-log">
                         <div className="boss-battle-summary">
                           <strong>
