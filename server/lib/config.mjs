@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pgPackage from 'pg';
+import './load-env.mjs';
 
 const { Pool } = pgPackage;
 const __filename = fileURLToPath(import.meta.url);

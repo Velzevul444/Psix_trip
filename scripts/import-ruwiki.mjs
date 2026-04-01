@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import pgPackage from 'pg';
 import copyStreamsPackage from 'pg-copy-streams';
+import '../server/lib/load-env.mjs';
 
 const { Client } = pgPackage;
 const { from: copyFrom } = copyStreamsPackage;

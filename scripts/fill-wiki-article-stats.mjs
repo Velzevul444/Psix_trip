@@ -1,6 +1,7 @@
 import { finished } from 'node:stream/promises';
 import pgPackage from 'pg';
 import copyStreamsPackage from 'pg-copy-streams';
+import '../server/lib/load-env.mjs';
 import { generateDeterministicCardStats, STAT_KEYS } from '../shared/card-stats.mjs';
 import { buildRarityLevels, DEFAULT_RARITY_THRESHOLDS, getRarityByViewCount } from '../shared/rarity.mjs';
 
