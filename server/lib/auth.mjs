@@ -140,6 +140,13 @@ export function serializeUser(row) {
   };
 }
 
+export function serializePublicUser(row) {
+  return {
+    id: Number(row.id),
+    username: row.username
+  };
+}
+
 function buildAuthResponse(row) {
   const user = serializeUser(row);
   const token = createAuthToken(user);
@@ -231,6 +238,41 @@ export async function findUserById(id) {
   );
 
   return result.rows[0] || null;
+}
+
+export async function searchUsersByUsername(search, currentUserId, limit = 12) {
+  await ensureUsersTable();
+
+  const normalizedSearch = normalizeUsername(search);
+  const safeCurrentUserId = Number(currentUserId);
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 12, 20));
+
+  if (normalizedSearch.length < 2) {
+    return {
+      users: [],
+      total: 0,
+      search: normalizedSearch
+    };
+  }
+
+  const values = [`%${normalizedSearch}%`, safeCurrentUserId, safeLimit];
+  const result = await pool.query(
+    `
+      SELECT id, username
+      FROM ${USERS_TABLE}
+      WHERE username ILIKE $1
+        AND id <> $2
+      ORDER BY username ASC
+      LIMIT $3
+    `,
+    values
+  );
+
+  return {
+    users: result.rows.map((row) => serializePublicUser(row)),
+    total: result.rows.length,
+    search: normalizedSearch
+  };
 }
 
 function validateRegistrationInput(body) {

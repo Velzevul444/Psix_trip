@@ -5,6 +5,7 @@ import {
   ensureUserArticleDropsTable
 } from './articles.mjs';
 import { ensureBossCardDefeatsTable, ensureBossesTable } from './bosses.mjs';
+import { ensureDuelsTable } from './duels.mjs';
 
 export async function initializeDatabaseSchema() {
   await ensureUsersTable();
@@ -13,5 +14,6 @@ export async function initializeDatabaseSchema() {
   await ensureUserArticleDropsTable();
   await ensureBossesTable();
   await ensureBossCardDefeatsTable();
+  await ensureDuelsTable();
   await promoteBootstrapAdmins();
 }

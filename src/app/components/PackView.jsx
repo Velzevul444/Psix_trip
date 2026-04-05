@@ -23,6 +23,7 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
   const [isFetchingCards, setIsFetchingCards] = useState(false);
   const [isPackCooldown, setIsPackCooldown] = useState(false);
   const summaryCacheRef = useRef(new Map());
+  const fetchRequestIdRef = useRef(0);
   const isMobileViewport = useIsMobileViewport();
 
   useEffect(() => {
@@ -75,12 +76,15 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
   };
 
   const fetchCards = async () => {
+    const requestId = fetchRequestIdRef.current + 1;
+    fetchRequestIdRef.current = requestId;
     setIsFetchingCards(true);
     setCards([]);
 
     try {
       const blockedTitles = new Set(recentTitlesRef.current.set);
       const fetchedCards = [];
+      const hydrationTargets = [];
       let attempts = 0;
       let activeRarityLevels = rarityLevels;
 
@@ -114,41 +118,76 @@ function PackView({ authToken, authUser, rarityLevels, onRarityLevelsChange, rec
           index += TITLE_PROCESS_CONCURRENCY
         ) {
           const batch = candidatesToProcess.slice(index, index + TITLE_PROCESS_CONCURRENCY);
-          const hydratedBatch = await Promise.all(
-            batch.map(async (article) => {
-              const summary = await getCachedPageSummary(article.title);
-              return {
-                article,
-                card: {
-                  ...buildCardData(article, summary, activeRarityLevels),
-                  packSessionId: payload.packSessionId || ''
-                }
-              };
-            })
-          );
 
-          for (const { article, card } of hydratedBatch) {
+          for (const article of batch) {
             if (fetchedCards.length >= PACK_SIZE) break;
 
             const rawKey = normalizeTitle(article.title);
-            const finalKey = normalizeTitle(card.title);
+            const card = {
+              ...buildCardData(article, null, activeRarityLevels),
+              packSessionId: payload.packSessionId || ''
+            };
 
-            if (blockedTitles.has(finalKey) && finalKey !== rawKey) {
-              continue;
-            }
-
-            blockedTitles.add(finalKey);
             fetchedCards.push(card);
             rememberTitle(card.title);
+            hydrationTargets.push({
+              article,
+              packSessionId: payload.packSessionId || '',
+              raritySnapshot: activeRarityLevels
+            });
+
+            blockedTitles.add(rawKey);
           }
         }
       }
 
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
+
       setCards(fetchedCards);
+
+      void Promise.allSettled(
+        hydrationTargets.map(async ({ article, packSessionId, raritySnapshot }) => {
+          const summary = await getCachedPageSummary(article.title);
+
+          if (!summary) {
+            return null;
+          }
+
+          return {
+            sourceId: Number(article.id),
+            card: {
+              ...buildCardData(article, summary, raritySnapshot),
+              packSessionId
+            }
+          };
+        })
+      ).then((results) => {
+        if (requestId !== fetchRequestIdRef.current) {
+          return;
+        }
+
+        const updates = new Map(
+          results
+            .filter((result) => result.status === 'fulfilled' && result.value)
+            .map((result) => [result.value.sourceId, result.value.card])
+        );
+
+        if (updates.size === 0) {
+          return;
+        }
+
+        setCards((current) =>
+          current.map((card) => updates.get(Number(card.sourceId)) || card)
+        );
+      });
     } catch (error) {
       console.error('Error fetching cards:', error);
     } finally {
-      setIsFetchingCards(false);
+      if (requestId === fetchRequestIdRef.current) {
+        setIsFetchingCards(false);
+      }
     }
   };
 

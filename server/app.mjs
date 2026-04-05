@@ -6,7 +6,8 @@ import {
   getOptionalCurrentUser,
   assertAdminUser,
   loginUser,
-  registerUser
+  registerUser,
+  searchUsersByUsername
 } from './lib/auth.mjs';
 import {
   grantArticleToUser,
@@ -23,6 +24,13 @@ import {
   performBossBattle,
   replaceCurrentBoss
 } from './lib/bosses.mjs';
+import {
+  createDuelInvitation,
+  createDuelInvitationByUsername,
+  loadUserDuelState,
+  respondToDuelInvitation,
+  submitDuelTeam
+} from './lib/duels.mjs';
 import { HttpError } from './lib/errors.mjs';
 import { tryServeFrontend } from './lib/frontend.mjs';
 import { readJsonBody, sendJson, sendNoContent } from './lib/http.mjs';
@@ -77,6 +85,76 @@ export function createAppServer() {
         const user = await getCurrentUser(request);
 
         sendJson(response, 200, { user });
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/duels/state') {
+        const currentUser = await getCurrentUser(request);
+        const result = await loadUserDuelState(currentUser.id);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/duels/users') {
+        const currentUser = await getCurrentUser(request);
+        const result = await searchUsersByUsername(
+          url.searchParams.get('search'),
+          currentUser.id
+        );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/duels/invite') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const targetUserId = Number(body.targetUserId);
+        const result = Number.isInteger(targetUserId) && targetUserId > 0
+          ? await createDuelInvitation(currentUser.id, targetUserId)
+          : await createDuelInvitationByUsername(currentUser.id, body.username);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const duelRespondMatch =
+        request.method === 'POST'
+          ? url.pathname.match(/^\/api\/duels\/(\d+)\/respond$/)
+          : null;
+
+      if (duelRespondMatch) {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await respondToDuelInvitation(
+          currentUser.id,
+          duelRespondMatch[1],
+          body.action
+        );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const duelTeamMatch =
+        request.method === 'POST' ? url.pathname.match(/^\/api\/duels\/(\d+)\/team$/) : null;
+
+      if (duelTeamMatch) {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const rarityLevels = createRarityLevels();
+        const result = await submitDuelTeam(
+          currentUser.id,
+          duelTeamMatch[1],
+          body.articleIds,
+          rarityLevels
+        );
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
         return;
       }
 

@@ -28,6 +28,7 @@ export const USER_ARTICLE_DROPS_TABLE =
 export const BOSSES_TABLE = process.env.BOSSES_TABLE_NAME || 'bosses';
 export const BOSS_CARD_DEFEATS_TABLE =
   process.env.BOSS_CARD_DEFEATS_TABLE_NAME || 'boss_card_defeats';
+export const DUELS_TABLE = process.env.DUELS_TABLE_NAME || 'duels';
 export const MAX_RARITY_ROLL_ATTEMPTS = 25;
 export const ARTICLES_PAGE_LIMIT_DEFAULT = Number(
   process.env.ARTICLES_PAGE_LIMIT_DEFAULT || 60
@@ -55,6 +56,7 @@ export const COMBAT_STAT_KEYS = [
   'stamina'
 ];
 export const BOSS_TEAM_SIZE = 5;
+export const DUEL_TEAM_SIZE = 5;
 export const BOSS_HP_MULTIPLIER = Number(process.env.BOSS_HP_MULTIPLIER || 10);
 export const BOSS_CARD_RECOVERY_MINUTES = Number(
   process.env.BOSS_CARD_RECOVERY_MINUTES || 30

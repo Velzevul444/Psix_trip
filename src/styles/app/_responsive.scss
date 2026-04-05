@@ -81,7 +81,8 @@
   }
 
   .pack-screen-stage,
-  .boss-screen-shell {
+  .boss-screen-shell,
+  .duel-screen-shell {
     overflow: auto;
   }
 
@@ -155,13 +156,15 @@
 
   .pack-screen,
   .article-library,
-  .boss-screen {
+  .boss-screen,
+  .duel-screen {
     overflow: hidden;
   }
 
   .pack-screen-stage,
   .card-reveal,
   .boss-screen-shell,
+  .duel-screen-shell,
   .boss-team-panel,
   .boss-battle-log,
   .pack-stage-notes {

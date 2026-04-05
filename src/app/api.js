@@ -193,12 +193,98 @@ export async function submitBossBattle(articleIds, authToken) {
   return data;
 }
 
-export async function fetchPageSummary(title) {
-  const response = await fetch(
-    `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
-  );
+export async function fetchDuelState(authToken) {
+  const response = await fetch(API_ENDPOINTS.DUEL_STATE, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
 
   if (!response.ok) {
+    throw new Error(data.error || `Failed to load duel state: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function searchDuelUsers(search, authToken) {
+  const params = new URLSearchParams({ search });
+  const response = await fetch(`${API_ENDPOINTS.DUEL_USERS}?${params.toString()}`, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to search players: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function sendDuelInvite(payload, authToken) {
+  const response = await fetch(API_ENDPOINTS.DUEL_INVITE, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify(payload)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to send duel invite: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function respondToDuelInvite(duelId, action, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.DUEL_RESPOND}/${duelId}/respond`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ action })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to respond to duel invite: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function submitDuelTeamSelection(duelId, articleIds, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.DUEL_TEAM}/${duelId}/team`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ articleIds })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to submit duel team: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function fetchPageSummary(title) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+
+  let response;
+
+  try {
+    response = await fetch(
+      `https://ru.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+      {
+        signal: controller.signal
+      }
+    );
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  if (!response?.ok) {
     return null;
   }
 

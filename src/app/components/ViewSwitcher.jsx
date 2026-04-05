@@ -6,7 +6,8 @@ function ViewSwitcher({
   onSwitchToLibrary,
   onSwitchToPack,
   onSwitchToCollection,
-  onSwitchToBoss
+  onSwitchToBoss,
+  onSwitchToDuel
 }) {
   return (
     <div className="view-switcher">
@@ -71,6 +72,24 @@ function ViewSwitcher({
           <path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z" />
           <circle cx="15" cy="12" r="1" />
           <circle cx="9" cy="12" r="1" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`view-toggle duel-toggle ${viewMode === VIEW_MODES.DUEL ? 'active' : ''}`}
+        onClick={onSwitchToDuel}
+        aria-label="Показать экран дуэлей"
+      >
+        <svg className="view-icon-svg duel-icon-svg" viewBox="0 0 24 24" aria-hidden="true" strokeWidth={2}>
+          <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" />
+          <line x1="13" x2="19" y1="19" y2="13" />
+          <line x1="16" x2="20" y1="16" y2="20" />
+          <line x1="19" x2="21" y1="21" y2="19" />
+          <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" />
+          <line x1="5" x2="9" y1="14" y2="18" />
+          <line x1="7" x2="4" y1="17" y2="20" />
+          <line x1="3" x2="5" y1="19" y2="21" />
         </svg>
       </button>
     </div>

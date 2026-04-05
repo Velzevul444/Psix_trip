@@ -169,25 +169,32 @@ export function buildArticleStatsGroupByColumns(includeStatsColumns, alias) {
 }
 
 export function buildArticleStats(row) {
-  if (
-    row.hp === null ||
-    row.stamina === null ||
-    row.strength === null ||
-    row.dexterity === null ||
-    row.intelligence === null ||
-    row.charisma === null
-  ) {
-    return null;
+  const stats = {
+    hp: row.hp,
+    stamina: row.stamina,
+    strength: row.strength,
+    dexterity: row.dexterity,
+    intelligence: row.intelligence,
+    charisma: row.charisma
+  };
+
+  const normalizedStats = {};
+
+  for (const [key, rawValue] of Object.entries(stats)) {
+    if (rawValue === null || rawValue === undefined) {
+      return null;
+    }
+
+    const value = Number(rawValue);
+
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+
+    normalizedStats[key] = value;
   }
 
-  return {
-    hp: Number(row.hp),
-    stamina: Number(row.stamina),
-    strength: Number(row.strength),
-    dexterity: Number(row.dexterity),
-    intelligence: Number(row.intelligence),
-    charisma: Number(row.charisma)
-  };
+  return normalizedStats;
 }
 
 export function serializeArticleRow(row, rarityLevels, forcedRarity = null) {
