@@ -82,7 +82,8 @@
 
   .pack-screen-stage,
   .boss-screen-shell,
-  .duel-screen-shell {
+  .duel-screen-shell,
+  .clan-screen-shell {
     overflow: auto;
   }
 
@@ -139,7 +140,8 @@
   .pack-screen-stage,
   .card-reveal,
   .library-header,
-  .boss-screen-shell {
+  .boss-screen-shell,
+  .clan-screen-shell {
     border-radius: 24px;
   }
 
@@ -157,7 +159,8 @@
   .pack-screen,
   .article-library,
   .boss-screen,
-  .duel-screen {
+  .duel-screen,
+  .clan-screen {
     overflow: hidden;
   }
 
@@ -165,6 +168,7 @@
   .card-reveal,
   .boss-screen-shell,
   .duel-screen-shell,
+  .clan-screen-shell,
   .boss-team-panel,
   .boss-battle-log,
   .pack-stage-notes {
@@ -939,7 +943,8 @@
   .pack-screen-stage,
   .card-reveal,
   .library-header,
-  .boss-screen-shell {
+  .boss-screen-shell,
+  .clan-screen-shell {
     border-radius: 24px;
   }
 

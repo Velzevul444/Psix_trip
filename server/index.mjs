@@ -3,6 +3,7 @@ import { initializeDatabaseSchema } from './lib/bootstrap.mjs';
 import { API_PORT, pool } from './lib/config.mjs';
 
 const server = createAppServer();
+let isShuttingDown = false;
 
 async function startServer() {
   try {
@@ -23,8 +24,21 @@ async function startServer() {
 void startServer();
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
-  process.on(signal, async () => {
-    await pool.end();
-    server.close(() => process.exit(0));
+  process.on(signal, () => {
+    if (isShuttingDown) {
+      return;
+    }
+
+    isShuttingDown = true;
+
+    server.close(async () => {
+      try {
+        await pool.end();
+        process.exit(0);
+      } catch (error) {
+        console.error('[shutdown] Failed to close database pool:', error);
+        process.exit(1);
+      }
+    });
   });
 }

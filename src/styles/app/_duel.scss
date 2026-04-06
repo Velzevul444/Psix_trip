@@ -247,6 +247,12 @@
   gap: 0.7rem;
 }
 
+.duel-secondary-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.7rem;
+}
+
 .duel-inline-error {
   margin-top: auto;
 }
@@ -300,6 +306,219 @@
   line-height: 1.6;
 }
 
+.duel-screen-mobile .duel-screen-shell-mobile {
+  gap: 0.75rem;
+  overflow: auto;
+  padding-right: 0.08rem;
+}
+
+.duel-tabs .boss-mobile-tab.active,
+.duel-mobile-tabs .boss-mobile-tab.active {
+  border-color: rgba(111, 230, 157, 0.28);
+  background: rgba(111, 230, 157, 0.12);
+  color: var(--text-1);
+}
+
+.duel-mobile-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+.duel-mobile-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.duel-mobile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.88rem 0.9rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(111, 230, 157, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(111, 230, 157, 0.12), transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    rgba(255, 255, 255, 0.03);
+}
+
+.duel-mobile-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.duel-mobile-summary-title {
+  display: block;
+  margin-top: 0.58rem;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.28;
+  letter-spacing: -0.04em;
+}
+
+.duel-mobile-participants {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.duel-mobile-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.duel-mobile-slot {
+  min-height: 98px;
+  padding: 0.72rem 0.76rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.36rem;
+  border-radius: 18px;
+  text-align: left;
+}
+
+.duel-mobile-slot strong {
+  font-size: 0.84rem;
+  line-height: 1.28;
+}
+
+.duel-mobile-slot em,
+.duel-mobile-slot i {
+  font-style: normal;
+}
+
+.duel-mobile-slot-index {
+  color: var(--text-3);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.duel-mobile-slot-empty {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.duel-mobile-slot-empty em {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.duel-mobile-slot-filled {
+  border: 1px solid color-mix(in srgb, var(--duel-slot-accent, #6fe69d) 34%, rgba(255, 255, 255, 0.1));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--duel-slot-accent, #6fe69d) 18%, transparent), transparent 40%),
+    rgba(255, 255, 255, 0.04);
+  color: var(--text-1);
+}
+
+.duel-mobile-slot-filled em {
+  color: var(--duel-slot-accent, #6fe69d);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.duel-mobile-slot-filled i {
+  color: var(--text-3);
+  font-size: 0.7rem;
+}
+
+.duel-mobile-search-results {
+  margin-top: 0;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+}
+
+.duel-mobile-candidate {
+  gap: 0.65rem;
+  align-items: flex-start;
+  border-color: color-mix(in srgb, var(--duel-candidate-accent, #6fe69d) 28%, rgba(255, 255, 255, 0.08));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--duel-candidate-accent, #6fe69d) 14%, transparent), transparent 42%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.duel-mobile-candidate.selected {
+  border-color: rgba(111, 230, 157, 0.3);
+  background:
+    radial-gradient(circle at top right, rgba(111, 230, 157, 0.16), transparent 42%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.duel-mobile-candidate-copy {
+  flex: 1;
+}
+
+.duel-mobile-candidate-copy strong {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.88rem;
+  line-height: 1.32;
+}
+
+.duel-mobile-candidate-copy span {
+  display: block;
+}
+
+.duel-mobile-candidate-meta {
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.28rem;
+}
+
+.duel-mobile-candidate-action {
+  color: var(--text-1);
+  font-weight: 800;
+  font-style: normal;
+}
+
+.duel-mobile-candidate-meta span {
+  text-align: right;
+}
+
+.duel-mobile-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.1rem;
+  position: relative;
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(10, 12, 16, 0), rgba(10, 12, 16, 0.96) 42%);
+}
+
+.duel-mobile-footer .boss-fight-btn {
+  width: 100%;
+}
+
+.duel-mobile-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.duel-log-empty {
+  margin: 0;
+}
+
 .view-toggle.duel-toggle.active {
   color: #081113;
   background: linear-gradient(135deg, #f7cb77, #6fe69d);
@@ -346,7 +565,36 @@
   }
 
   .duel-pending-actions,
+  .duel-secondary-actions,
   .duel-invite-banner-actions {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .duel-mobile-summary-head {
+    flex-direction: column;
+  }
+
+  .duel-mobile-candidate {
+    flex-direction: column;
+  }
+
+  .duel-mobile-candidate-meta {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .duel-mobile-candidate-meta span {
+    text-align: left;
+  }
+}
+
+@media (max-width: 380px) {
+  .duel-mobile-slots {
+    grid-template-columns: 1fr;
   }
 }

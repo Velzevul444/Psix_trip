@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   fetchDuelState,
   fetchMyArticlesPage,
+  leaveCurrentDuelRequest,
   respondToDuelInvite,
   searchDuelUsers,
   sendDuelInvite,
@@ -18,6 +19,8 @@ import {
   getStatLabel,
   resolveArticleRarity
 } from '../utils';
+import useIsMobileViewport from '../hooks/useIsMobileViewport';
+import DuelMobileView from './DuelMobileView';
 
 function DuelView({
   authUser,
@@ -38,6 +41,7 @@ function DuelView({
   const [inviteActionError, setInviteActionError] = useState('');
   const [isInviteSubmitting, setIsInviteSubmitting] = useState(false);
   const [isInviteResponding, setIsInviteResponding] = useState(false);
+  const [isLeavingDuel, setIsLeavingDuel] = useState(false);
   const [teamSearchInput, setTeamSearchInput] = useState('');
   const [teamSearchQuery, setTeamSearchQuery] = useState('');
   const [teamCandidates, setTeamCandidates] = useState([]);
@@ -49,6 +53,7 @@ function DuelView({
   const [activeTab, setActiveTab] = useState('team');
   const inviteSearchRequestIdRef = useRef(0);
   const teamSearchRequestIdRef = useRef(0);
+  const isMobileViewport = useIsMobileViewport();
 
   const loadState = async () => {
     if (!authToken || !authUser) {
@@ -242,6 +247,7 @@ function DuelView({
   const hasBattleLog = Array.isArray(duelState?.battleResult?.turns) && duelState.battleResult.turns.length > 0;
   const shouldShowFinishedLogInline = duelState?.status === 'finished' && showLogTab;
   const myTeamReady = selectedTeam.length === DUEL_TEAM_SIZE;
+  const isForfeitResult = duelState?.battleResult?.resolution === 'forfeit';
 
   const handleInvite = async (targetUser) => {
     if (!authToken) {
@@ -281,6 +287,25 @@ function DuelView({
       setInviteActionError(error.message || 'Не удалось ответить на приглашение.');
     } finally {
       setIsInviteResponding(false);
+    }
+  };
+
+  const handleLeaveDuel = async () => {
+    if (!authToken || !duelState?.id) {
+      return;
+    }
+
+    setIsLeavingDuel(true);
+    setInviteActionError('');
+
+    try {
+      const payload = await leaveCurrentDuelRequest(duelState.id, authToken);
+      setDuelState(payload.duel || null);
+      onDuelRefresh?.();
+    } catch (error) {
+      setInviteActionError(error.message || 'Не удалось выйти из дуэли.');
+    } finally {
+      setIsLeavingDuel(false);
     }
   };
 
@@ -390,7 +415,9 @@ function DuelView({
 
     const resultLabel = duelState.battleResult
       ? duelState.winner?.id === duelState.me.id
-        ? 'Победа'
+        ? isForfeitResult
+          ? 'Победа'
+          : 'Победа'
         : 'Поражение'
       : duelState.status === 'pending'
         ? duelState.isIncomingInvite
@@ -456,24 +483,52 @@ function DuelView({
         ) : null}
 
         {duelState.status === 'pending' && duelState.isOutgoingInvite ? (
-          <div className="duel-note">
-            Приглашение отправлено. Как только соперник согласится, оба сможете выбрать по 5 карт.
-          </div>
+          <>
+            <div className="duel-note">
+              Приглашение отправлено. Как только соперник согласится, оба сможете выбрать по 5 карт.
+            </div>
+            <div className="duel-secondary-actions">
+              <button
+                type="button"
+                className="duel-invite-btn duel-invite-btn-muted"
+                onClick={() => void handleLeaveDuel()}
+                disabled={isLeavingDuel}
+              >
+                {isLeavingDuel ? 'Отменяем...' : 'Отменить вызов'}
+              </button>
+            </div>
+          </>
         ) : null}
 
         {duelState.status === 'active' ? (
-          <div className="duel-note">
-            Карты атакуют случайно, а лог боя появится сразу после того, как обе команды будут зафиксированы.
-          </div>
+          <>
+            <div className="duel-note">
+              Карты атакуют случайно, а лог боя появится сразу после того, как обе команды будут зафиксированы.
+            </div>
+            <div className="duel-secondary-actions">
+              <button
+                type="button"
+                className="duel-invite-btn duel-invite-btn-muted"
+                onClick={() => void handleLeaveDuel()}
+                disabled={isLeavingDuel}
+              >
+                {isLeavingDuel ? 'Выходим...' : 'Выйти из дуэли'}
+              </button>
+            </div>
+          </>
         ) : null}
 
         {duelState.battleResult ? (
           <div className="duel-result-chip">
             <strong>{duelState.winner?.username} победил</strong>
             <span>
-              {duelState.winner?.id === duelState.me.id
-                ? 'Твоя команда пережила дуэль.'
-                : 'Соперник пережил больше ударов.'}
+              {isForfeitResult
+                ? duelState.winner?.id === duelState.me.id
+                  ? `${duelState.opponent.username} покинул дуэль до завершения боя.`
+                  : 'Ты покинул дуэль до завершения боя.'
+                : duelState.winner?.id === duelState.me.id
+                  ? 'Твоя команда пережила дуэль.'
+                  : 'Соперник пережил больше ударов.'}
             </span>
           </div>
         ) : null}
@@ -631,14 +686,22 @@ function DuelView({
         <div className="boss-battle-summary duel-battle-summary">
           <strong>{duelState.winner?.username} победил в дуэли</strong>
           <span>
-            {duelState.winner?.id === duelState.me.id
-              ? 'Твои карты выдержали больше случайных ударов.'
-              : 'Соперник оказался живучее в этом рандомном размене.'}
+            {isForfeitResult
+              ? duelState.winner?.id === duelState.me.id
+                ? `${duelState.opponent.username} покинул дуэль до начала финального боя.`
+                : 'Ты покинул дуэль до завершения боя.'
+              : duelState.winner?.id === duelState.me.id
+                ? 'Твои карты выдержали больше случайных ударов.'
+                : 'Соперник оказался живучее в этом рандомном размене.'}
           </span>
         </div>
 
         <div className="boss-rounds duel-rounds">
-          {hasBattleLog ? (
+          {isForfeitResult ? (
+            <div className="duel-note duel-log-empty">
+              Дуэль завершилась досрочно: {duelState.battleResult?.forfeitedUsername || 'игрок'} покинул бой.
+            </div>
+          ) : hasBattleLog ? (
             duelState.battleResult.turns.map((turn) => (
               <div key={turn.turn} className="boss-round duel-round">
                 <div className="boss-round-title">Ход {turn.turn}</div>
@@ -673,6 +736,47 @@ function DuelView({
           <div className="library-status">Войди в аккаунт, чтобы приглашать других игроков на дуэли.</div>
         </div>
       </section>
+    );
+  }
+
+  if (isMobileViewport) {
+    return (
+      <DuelMobileView
+        rarityLevels={rarityLevels}
+        duelError={duelError}
+        isDuelLoading={isDuelLoading}
+        duelState={duelState}
+        showInviteSearchPanel={showInviteSearchPanel}
+        showLogTab={showLogTab}
+        hasBattleLog={hasBattleLog}
+        inviteSearchInput={inviteSearchInput}
+        onInviteSearchInputChange={(nextValue) => setInviteSearchInput(nextValue)}
+        inviteSearchQuery={inviteSearchQuery}
+        inviteResults={inviteResults}
+        isInviteSearchLoading={isInviteSearchLoading}
+        inviteSearchError={inviteSearchError}
+        inviteActionError={inviteActionError}
+        isInviteSubmitting={isInviteSubmitting}
+        isInviteResponding={isInviteResponding}
+        isLeavingDuel={isLeavingDuel}
+        onInvite={handleInvite}
+        onRespondToInvite={handleRespondToInvite}
+        onLeaveDuel={() => void handleLeaveDuel()}
+        selectedTeam={selectedTeam}
+        teamSearchInput={teamSearchInput}
+        onTeamSearchInputChange={(nextValue) => {
+          setTeamSearchInput(nextValue);
+          setTeamSubmitError('');
+        }}
+        isTeamLoading={isTeamLoading}
+        teamError={teamError}
+        orderedTeamCandidates={orderedTeamCandidates}
+        selectedTeamIdSet={selectedTeamIdSet}
+        onToggleSelectedTeamMember={toggleSelectedTeamMember}
+        teamSubmitError={teamSubmitError}
+        isTeamSubmitting={isTeamSubmitting}
+        onSubmitTeam={() => void handleSubmitTeam()}
+      />
     );
   }
 

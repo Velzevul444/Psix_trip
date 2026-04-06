@@ -7,7 +7,8 @@ function ViewSwitcher({
   onSwitchToPack,
   onSwitchToCollection,
   onSwitchToBoss,
-  onSwitchToDuel
+  onSwitchToDuel,
+  onSwitchToClans
 }) {
   return (
     <div className="view-switcher">
@@ -90,6 +91,20 @@ function ViewSwitcher({
           <line x1="5" x2="9" y1="14" y2="18" />
           <line x1="7" x2="4" y1="17" y2="20" />
           <line x1="3" x2="5" y1="19" y2="21" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`view-toggle clan-toggle ${viewMode === VIEW_MODES.CLANS ? 'active' : ''}`}
+        onClick={onSwitchToClans}
+        aria-label="Показать экран кланов"
+      >
+        <svg className="view-icon-svg clan-icon-svg" viewBox="0 0 24 24" aria-hidden="true" strokeWidth={2}>
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" />
+          <path d="M12 3v18" />
+          <path d="M3.5 12h17" />
         </svg>
       </button>
     </div>

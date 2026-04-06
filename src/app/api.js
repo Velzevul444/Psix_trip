@@ -176,6 +176,153 @@ export async function fetchCurrentBoss(authToken = '') {
   return data;
 }
 
+export async function fetchClanState(authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_STATE, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load clan state: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function fetchClansPage(offset, limit, authToken, options = {}) {
+  const params = new URLSearchParams({
+    offset: String(offset),
+    limit: String(limit)
+  });
+
+  if (options.search) {
+    params.set('search', options.search);
+  }
+
+  const response = await fetch(`${API_ENDPOINTS.CLANS}?${params.toString()}`, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load clans: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function createClanRequest(payload, authToken) {
+  const response = await fetch(API_ENDPOINTS.CLANS, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify(payload)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to create clan: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function joinClanRequest(clanId, authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_JOIN, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ clanId })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to join clan: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function leaveClanRequest(authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_LEAVE, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({})
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to leave clan: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function removeClanMemberRequest(userId, authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_KICK, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ userId })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to remove clan member: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function updateCurrentClanRequest(payload, authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_CURRENT, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify(payload)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to update clan: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function fetchClanMessages(authToken, limit) {
+  const params = new URLSearchParams();
+
+  if (limit) {
+    params.set('limit', String(limit));
+  }
+
+  const response = await fetch(
+    `${API_ENDPOINTS.CLAN_MESSAGES}${params.toString() ? `?${params.toString()}` : ''}`,
+    {
+      headers: buildAuthHeaders(authToken)
+    }
+  );
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load clan chat: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function sendClanMessageRequest(message, authToken) {
+  const response = await fetch(API_ENDPOINTS.CLAN_MESSAGES, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ message })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to send clan message: ${response.status}`);
+  }
+
+  return data;
+}
+
 export async function submitBossBattle(articleIds, authToken) {
   const response = await fetch(API_ENDPOINTS.BOSS_BATTLE, {
     method: 'POST',
@@ -260,6 +407,21 @@ export async function submitDuelTeamSelection(duelId, articleIds, authToken) {
 
   if (!response.ok) {
     throw new Error(data.error || `Failed to submit duel team: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function leaveCurrentDuelRequest(duelId, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.DUEL_LEAVE}/${duelId}/leave`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({})
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to leave duel: ${response.status}`);
   }
 
   return data;

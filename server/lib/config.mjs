@@ -29,6 +29,9 @@ export const BOSSES_TABLE = process.env.BOSSES_TABLE_NAME || 'bosses';
 export const BOSS_CARD_DEFEATS_TABLE =
   process.env.BOSS_CARD_DEFEATS_TABLE_NAME || 'boss_card_defeats';
 export const DUELS_TABLE = process.env.DUELS_TABLE_NAME || 'duels';
+export const CLANS_TABLE = process.env.CLANS_TABLE_NAME || 'clans';
+export const CLAN_MEMBERS_TABLE = process.env.CLAN_MEMBERS_TABLE_NAME || 'clan_members';
+export const CLAN_MESSAGES_TABLE = process.env.CLAN_MESSAGES_TABLE_NAME || 'clan_messages';
 export const MAX_RARITY_ROLL_ATTEMPTS = 25;
 export const ARTICLES_PAGE_LIMIT_DEFAULT = Number(
   process.env.ARTICLES_PAGE_LIMIT_DEFAULT || 60

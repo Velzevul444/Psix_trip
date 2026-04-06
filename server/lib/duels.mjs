@@ -256,7 +256,7 @@ function buildSerializedBattleResult(row) {
     turns: Array.isArray(row.battle_result.turns) ? row.battle_result.turns : []
   };
 
-  if (battleResult.turns.length > 0 || row.status !== 'finished') {
+  if (battleResult.turns.length > 0 || row.status !== 'finished' || battleResult.resolution === 'forfeit') {
     return battleResult;
   }
 
@@ -627,11 +627,12 @@ export async function createDuelInvitation(inviterUserId, targetUserId) {
   try {
     await client.query('BEGIN');
 
-    const [inviterUser, targetUser, existingDuel] = await Promise.all([
-      loadUserById(safeInviterUserId, client),
-      loadUserById(safeTargetUserId, client),
-      loadActiveOrPendingDuelForUsers([safeInviterUserId, safeTargetUserId], client)
-    ]);
+    const inviterUser = await loadUserById(safeInviterUserId, client);
+    const targetUser = await loadUserById(safeTargetUserId, client);
+    const existingDuel = await loadActiveOrPendingDuelForUsers(
+      [safeInviterUserId, safeTargetUserId],
+      client
+    );
 
     if (!inviterUser || !targetUser) {
       throw new HttpError(404, 'Игрок не найден.');
@@ -726,6 +727,91 @@ export async function respondToDuelInvitation(userId, duelId, action) {
       `,
       [normalizedAction === 'accept' ? 'active' : 'declined', safeDuelId]
     );
+
+    await client.query('COMMIT');
+    return loadUserDuelState(safeUserId);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function leaveDuel(userId, duelId) {
+  const safeUserId = Number(userId);
+  const safeDuelId = Number(duelId);
+
+  if (!Number.isInteger(safeDuelId) || safeDuelId <= 0) {
+    throw new HttpError(400, 'Некорректный идентификатор дуэли.');
+  }
+
+  await ensureDuelsTable();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const duelRow = await loadDuelRowForUserUpdate(safeDuelId, safeUserId, client);
+
+    if (!duelRow) {
+      throw new HttpError(404, 'Дуэль не найдена.');
+    }
+
+    if (!['pending', 'active'].includes(duelRow.status)) {
+      throw new HttpError(409, 'Эту дуэль уже нельзя покинуть.');
+    }
+
+    if (duelRow.status === 'pending') {
+      await client.query(
+        `
+          UPDATE ${DUELS_TABLE}
+          SET status = 'declined',
+              responded_at = NOW(),
+              finished_at = NOW(),
+              updated_at = NOW()
+          WHERE id = $1
+        `,
+        [safeDuelId]
+      );
+    } else {
+      const inviterUser = await loadUserById(duelRow.inviter_user_id, client);
+      const invitedUser = await loadUserById(duelRow.invited_user_id, client);
+      const winnerUser =
+        Number(duelRow.inviter_user_id) === safeUserId ? invitedUser : inviterUser;
+      const loserUser =
+        Number(duelRow.inviter_user_id) === safeUserId ? inviterUser : invitedUser;
+
+      await client.query(
+        `
+          UPDATE ${DUELS_TABLE}
+          SET status = 'finished',
+              battle_result = $1::jsonb,
+              winner_user_id = $2,
+              finished_at = NOW(),
+              updated_at = NOW()
+          WHERE id = $3
+        `,
+        [
+          JSON.stringify({
+            winnerUserId: Number(winnerUser.id),
+            loserUserId: Number(loserUser.id),
+            winnerUsername: winnerUser.username,
+            loserUsername: loserUser.username,
+            turns: [],
+            teams: {
+              inviter: normalizeTeamSnapshot(duelRow.inviter_team),
+              invited: normalizeTeamSnapshot(duelRow.invited_team)
+            },
+            resolution: 'forfeit',
+            forfeitedUserId: Number(loserUser.id),
+            forfeitedUsername: loserUser.username
+          }),
+          Number(winnerUser.id),
+          safeDuelId
+        ]
+      );
+    }
 
     await client.query('COMMIT');
     return loadUserDuelState(safeUserId);

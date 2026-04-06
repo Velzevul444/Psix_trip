@@ -320,7 +320,21 @@ a {
   overflow: hidden;
 }
 
-.app-stage > * {
+.app-view-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-view-panel.is-active {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-view-panel.is-active > * {
+  flex: 1;
+  min-height: 0;
   animation: screenEnter 0.55s ease both;
 }
 

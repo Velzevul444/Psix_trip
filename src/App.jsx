@@ -3,6 +3,7 @@ import { buildRarityLevels, DEFAULT_RARITY_THRESHOLDS } from '../shared/rarity.m
 import { fetchCurrentUser, fetchDuelState, respondToDuelInvite } from './app/api';
 import AppSideMenu from './app/components/AppSideMenu';
 import BossView from './app/components/BossView';
+import ClanView from './app/components/ClanView';
 import DuelView from './app/components/DuelView';
 import LibraryView from './app/components/LibraryView';
 import PackView from './app/components/PackView';
@@ -21,6 +22,7 @@ function App() {
   const [collectionRefreshToken, setCollectionRefreshToken] = useState(0);
   const [bossRefreshToken, setBossRefreshToken] = useState(0);
   const [duelRefreshToken, setDuelRefreshToken] = useState(0);
+  const [clanRefreshToken, setClanRefreshToken] = useState(0);
   const [duelState, setDuelState] = useState(null);
   const [duelBannerError, setDuelBannerError] = useState('');
   const [isDuelInviteResponding, setIsDuelInviteResponding] = useState(false);
@@ -109,6 +111,7 @@ function App() {
     storeAuthToken(token);
     setCollectionRefreshToken((current) => current + 1);
     setDuelRefreshToken((current) => current + 1);
+    setClanRefreshToken((current) => current + 1);
   };
 
   const handleLogout = () => {
@@ -118,8 +121,9 @@ function App() {
     setDuelBannerError('');
     storeAuthToken('');
     setCollectionRefreshToken((current) => current + 1);
+    setClanRefreshToken((current) => current + 1);
 
-    if (viewMode === VIEW_MODES.COLLECTION || viewMode === VIEW_MODES.DUEL) {
+    if (viewMode === VIEW_MODES.COLLECTION || viewMode === VIEW_MODES.DUEL || viewMode === VIEW_MODES.CLANS) {
       setViewMode(VIEW_MODES.PACKS);
     }
   };
@@ -131,6 +135,9 @@ function App() {
     }
     if (nextMode === VIEW_MODES.DUEL) {
       setDuelRefreshToken((current) => current + 1);
+    }
+    if (nextMode === VIEW_MODES.CLANS) {
+      setClanRefreshToken((current) => current + 1);
     }
   };
 
@@ -173,6 +180,7 @@ function App() {
         onSwitchToCollection={() => switchView(VIEW_MODES.COLLECTION)}
         onSwitchToBoss={() => switchView(VIEW_MODES.BOSS)}
         onSwitchToDuel={() => switchView(VIEW_MODES.DUEL)}
+        onSwitchToClans={() => switchView(VIEW_MODES.CLANS)}
       />
 
       {incomingDuelInvite ? (
@@ -239,7 +247,10 @@ function App() {
       />
 
       <main className="app-stage">
-        {viewMode === VIEW_MODES.PACKS ? (
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.PACKS ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.PACKS}
+        >
           <PackView
             authToken={authToken}
             authUser={authUser}
@@ -247,7 +258,40 @@ function App() {
             onRarityLevelsChange={handleRarityLevelsChange}
             recentTitlesRef={recentTitlesRef}
           />
-        ) : viewMode === VIEW_MODES.BOSS ? (
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.LIBRARY ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.LIBRARY}
+        >
+          <LibraryView
+            mode={VIEW_MODES.LIBRARY}
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            refreshToken={collectionRefreshToken}
+          />
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.COLLECTION ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.COLLECTION}
+        >
+          <LibraryView
+            mode={VIEW_MODES.COLLECTION}
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            refreshToken={collectionRefreshToken}
+          />
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.BOSS ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.BOSS}
+        >
           <BossView
             authToken={authToken}
             authUser={authUser}
@@ -256,7 +300,12 @@ function App() {
             refreshToken={bossRefreshToken}
             onCollectionRefresh={() => setCollectionRefreshToken((current) => current + 1)}
           />
-        ) : viewMode === VIEW_MODES.DUEL ? (
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.DUEL ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.DUEL}
+        >
           <DuelView
             authToken={authToken}
             authUser={authUser}
@@ -265,16 +314,20 @@ function App() {
             refreshToken={duelRefreshToken}
             onDuelRefresh={() => setDuelRefreshToken((current) => current + 1)}
           />
-        ) : (
-          <LibraryView
-            mode={viewMode}
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.CLANS ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.CLANS}
+        >
+          <ClanView
             authToken={authToken}
             authUser={authUser}
-            rarityLevels={rarityLevels}
-            onRarityLevelsChange={handleRarityLevelsChange}
-            refreshToken={collectionRefreshToken}
+            isActive={viewMode === VIEW_MODES.CLANS}
+            refreshToken={clanRefreshToken}
+            onClanRefresh={() => setClanRefreshToken((current) => current + 1)}
           />
-        )}
+        </div>
       </main>
     </div>
   );

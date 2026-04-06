@@ -15,12 +15,17 @@ export const BOSS_TEAM_SIZE = 5;
 export const DUEL_TEAM_SEARCH_LIMIT = 24;
 export const DUEL_TEAM_SIZE = 5;
 export const DUEL_USER_SEARCH_MIN_LENGTH = 2;
+export const CLAN_PAGE_SIZE = 24;
+export const CLAN_CHAT_MESSAGE_LIMIT = 80;
+export const CLAN_CHAT_POLL_MS = 5000;
+export const CLAN_CHAT_MESSAGE_MAX_LENGTH = 600;
 export const VIEW_MODES = {
   PACKS: 'packs',
   LIBRARY: 'library',
   COLLECTION: 'collection',
   BOSS: 'boss',
-  DUEL: 'duel'
+  DUEL: 'duel',
+  CLANS: 'clans'
 };
 export { RARITY_ORDER };
 export const STAT_LABELS = [
@@ -52,9 +57,18 @@ export const API_ENDPOINTS = {
     import.meta.env.VITE_ADMIN_CHANGE_BOSS_ENDPOINT || '/api/admin/change-boss',
   BOSS: import.meta.env.VITE_BOSS_ENDPOINT || '/api/boss',
   BOSS_BATTLE: import.meta.env.VITE_BOSS_BATTLE_ENDPOINT || '/api/boss/battle',
+  CLAN_STATE: import.meta.env.VITE_CLAN_STATE_ENDPOINT || '/api/clans/state',
+  CLANS: import.meta.env.VITE_CLANS_ENDPOINT || '/api/clans',
+  CLAN_JOIN: import.meta.env.VITE_CLAN_JOIN_ENDPOINT || '/api/clans/join',
+  CLAN_LEAVE: import.meta.env.VITE_CLAN_LEAVE_ENDPOINT || '/api/clans/leave',
+  CLAN_KICK: import.meta.env.VITE_CLAN_KICK_ENDPOINT || '/api/clans/kick',
+  CLAN_CURRENT: import.meta.env.VITE_CLAN_CURRENT_ENDPOINT || '/api/clans/current',
+  CLAN_MESSAGES:
+    import.meta.env.VITE_CLAN_MESSAGES_ENDPOINT || '/api/clans/current/messages',
   DUEL_STATE: import.meta.env.VITE_DUEL_STATE_ENDPOINT || '/api/duels/state',
   DUEL_USERS: import.meta.env.VITE_DUEL_USERS_ENDPOINT || '/api/duels/users',
   DUEL_INVITE: import.meta.env.VITE_DUEL_INVITE_ENDPOINT || '/api/duels/invite',
   DUEL_RESPOND: import.meta.env.VITE_DUEL_RESPOND_ENDPOINT || '/api/duels',
-  DUEL_TEAM: import.meta.env.VITE_DUEL_TEAM_ENDPOINT || '/api/duels'
+  DUEL_TEAM: import.meta.env.VITE_DUEL_TEAM_ENDPOINT || '/api/duels',
+  DUEL_LEAVE: import.meta.env.VITE_DUEL_LEAVE_ENDPOINT || '/api/duels'
 };

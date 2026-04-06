@@ -27,10 +27,22 @@ import {
 import {
   createDuelInvitation,
   createDuelInvitationByUsername,
+  leaveDuel,
   loadUserDuelState,
   respondToDuelInvitation,
   submitDuelTeam
 } from './lib/duels.mjs';
+import {
+  createClanMessage,
+  createClan,
+  joinClan,
+  loadCurrentClanMessages,
+  leaveCurrentClan,
+  loadClansPage,
+  loadCurrentUserClan,
+  removeClanMember,
+  updateCurrentClan
+} from './lib/clans.mjs';
 import { HttpError } from './lib/errors.mjs';
 import { tryServeFrontend } from './lib/frontend.mjs';
 import { readJsonBody, sendJson, sendNoContent } from './lib/http.mjs';
@@ -88,6 +100,91 @@ export function createAppServer() {
         return;
       }
 
+      if (request.method === 'GET' && url.pathname === '/api/clans/state') {
+        const currentUser = await getCurrentUser(request);
+        const result = await loadCurrentUserClan(currentUser.id);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/clans') {
+        const currentUser = await getCurrentUser(request);
+        const result = await loadClansPage(
+          url.searchParams.get('offset'),
+          url.searchParams.get('limit'),
+          url.searchParams.get('search'),
+          currentUser.id
+        );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await createClan(currentUser.id, body);
+
+        sendJson(response, 201, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans/join') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await joinClan(currentUser.id, body.clanId);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans/leave') {
+        const currentUser = await getCurrentUser(request);
+        const result = await leaveCurrentClan(currentUser.id);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans/kick') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await removeClanMember(currentUser.id, body.userId);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans/current') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await updateCurrentClan(currentUser.id, body);
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/clans/current/messages') {
+        const currentUser = await getCurrentUser(request);
+        const result = await loadCurrentClanMessages(
+          currentUser.id,
+          url.searchParams.get('limit')
+        );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/clans/current/messages') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const result = await createClanMessage(currentUser.id, body);
+
+        sendJson(response, 201, result);
+        return;
+      }
+
       if (request.method === 'GET' && url.pathname === '/api/duels/state') {
         const currentUser = await getCurrentUser(request);
         const result = await loadUserDuelState(currentUser.id);
@@ -132,6 +229,17 @@ export function createAppServer() {
           duelRespondMatch[1],
           body.action
         );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const duelLeaveMatch =
+        request.method === 'POST' ? url.pathname.match(/^\/api\/duels\/(\d+)\/leave$/) : null;
+
+      if (duelLeaveMatch) {
+        const currentUser = await getCurrentUser(request);
+        const result = await leaveDuel(currentUser.id, duelLeaveMatch[1]);
 
         sendJson(response, 200, result);
         return;
@@ -326,7 +434,9 @@ export function createAppServer() {
 
       sendJson(response, 404, { error: 'Not found.' });
     } catch (error) {
-      console.error(error);
+      if (response.destroyed || response.writableEnded) {
+        return;
+      }
 
       if (error instanceof HttpError) {
         sendJson(response, error.statusCode, {
@@ -342,6 +452,7 @@ export function createAppServer() {
         return;
       }
 
+      console.error(error);
       sendJson(response, 500, {
         error: 'Internal server error.'
       });
