@@ -14,9 +14,9 @@ import {
   DUEL_USER_SEARCH_MIN_LENGTH
 } from '../constants';
 import {
+  buildDuelTurnLines,
   formatCompactNumber,
-  formatFullNumber,
-  getStatLabel,
+  resolveClassMeta,
   resolveArticleRarity
 } from '../utils';
 import useIsMobileViewport from '../hooks/useIsMobileViewport';
@@ -618,6 +618,7 @@ function DuelView({
               orderedTeamCandidates.map((article) => {
                 const rarity = resolveArticleRarity(article, rarityLevels);
                 const rarityData = rarityLevels[rarity];
+                const classMeta = resolveClassMeta({ ...article, rarity }, rarityLevels);
                 const isSelected = selectedTeamIdSet.has(article.id);
                 const isDisabled = !isSelected && selectedTeam.length >= DUEL_TEAM_SIZE;
 
@@ -631,7 +632,7 @@ function DuelView({
                   >
                     <div>
                       <strong>{article.title}</strong>
-                      <span>{rarityData?.name || rarity}</span>
+                      <span>{`${rarityData?.name || rarity} • ${classMeta.label}`}</span>
                       {isSelected ? (
                         <span className="boss-selected-note">В команде</span>
                       ) : null}
@@ -691,8 +692,8 @@ function DuelView({
                 ? `${duelState.opponent.username} покинул дуэль до начала финального боя.`
                 : 'Ты покинул дуэль до завершения боя.'
               : duelState.winner?.id === duelState.me.id
-                ? 'Твои карты выдержали больше случайных ударов.'
-                : 'Соперник оказался живучее в этом рандомном размене.'}
+                ? 'Твоя команда лучше разыграла роли, эффекты и синергию.'
+                : 'Соперник лучше реализовал роли и контроль по ходу боя.'}
           </span>
         </div>
 
@@ -705,12 +706,11 @@ function DuelView({
             duelState.battleResult.turns.map((turn) => (
               <div key={turn.turn} className="boss-round duel-round">
                 <div className="boss-round-title">Ход {turn.turn}</div>
-                <div className="boss-round-line">
-                  {turn.attackerUsername} / "{turn.attackerTitle}" атакует "{turn.targetTitle}" ({turn.targetUsername})
-                  через {getStatLabel(turn.statKey)}:{' '}
-                  {`${formatFullNumber(turn.attackValue)} - ${formatFullNumber(turn.defenseValue)} = ${formatFullNumber(turn.damage)}`}.
-                  Осталось HP: {formatFullNumber(turn.targetRemainingHp)}.
-                </div>
+                {buildDuelTurnLines(turn).map((line, index) => (
+                  <div key={`${turn.turn}-${index}`} className="boss-round-line">
+                    {line}
+                  </div>
+                ))}
               </div>
             ))
           ) : (

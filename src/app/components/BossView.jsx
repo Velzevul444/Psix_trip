@@ -5,10 +5,11 @@ import { fetchCurrentBoss, fetchMyArticlesPage, fetchPageSummary, submitBossBatt
 import useIsMobileViewport from '../hooks/useIsMobileViewport';
 import { BOSS_TEAM_SEARCH_LIMIT, BOSS_TEAM_SIZE } from '../constants';
 import {
+  buildBossRoundLines,
   buildCardData,
   formatCompactNumber,
   formatFullNumber,
-  getStatLabel,
+  resolveClassMeta,
   resolveArticleRarity
 } from '../utils';
 import BossMobileView from './BossMobileView';
@@ -513,6 +514,7 @@ function BossView({
                               orderedBossTeamCandidates.map((article) => {
                                 const rarity = resolveArticleRarity(article, rarityLevels);
                                 const rarityData = rarityLevels[rarity];
+                                const classMeta = resolveClassMeta({ ...article, rarity }, rarityLevels);
                                 const cardCooldown = getCardCooldown(article.id);
                                 const isCoolingDown = Boolean(cardCooldown);
                                 const isSelected = selectedBossTeamIdSet.has(article.id);
@@ -535,7 +537,7 @@ function BossView({
                                   >
                                     <div>
                                       <strong>{article.title}</strong>
-                                      <span>{rarityData?.name || rarity}</span>
+                                      <span>{`${rarityData?.name || rarity} • ${classMeta.label}`}</span>
                                       {isSelected ? (
                                         <span className="boss-selected-note">Уже в команде</span>
                                       ) : isCoolingDown ? (
@@ -593,17 +595,9 @@ function BossView({
                           {bossBattleResult.rounds.map((round) => (
                             <div key={round.turn} className="boss-round">
                               <div className="boss-round-title">Ход {round.turn}</div>
-                              <div className="boss-round-line">
-                                Босс ударил карту "{round.bossAttack.targetTitle}" через {getStatLabel(round.bossAttack.statKey)}:
-                                {` ${formatFullNumber(round.bossAttack.attackValue)} - ${formatFullNumber(round.bossAttack.defenseValue)} = ${formatFullNumber(round.bossAttack.damage)} урона.`}
-                              </div>
-                              {round.playerAttacks.map((attack) => (
-                                <div key={`${round.turn}-${attack.articleId}`} className="boss-round-line">
-                                  {attack.blocked
-                                    ? `Босс заблокировал атаку карты "${attack.title}".`
-                                    : attack.damage === 0
-                                      ? `Карта "${attack.title}" атаковала через ${getStatLabel(attack.statKey)}, но не пробила защиту босса: ${formatFullNumber(attack.attackValue)} - ${formatFullNumber(attack.defenseValue)} = 0.`
-                                      : `Карта "${attack.title}" ударила через ${getStatLabel(attack.statKey)} на ${formatFullNumber(attack.damage)} урона. У босса осталось ${formatFullNumber(attack.bossRemainingHp)} HP.`}
+                              {buildBossRoundLines(round).map((line, index) => (
+                                <div key={`${round.turn}-${index}`} className="boss-round-line">
+                                  {line}
                                 </div>
                               ))}
                             </div>

@@ -5,7 +5,6 @@ import {
 } from '../../shared/card-stats.mjs';
 import { getRarityByViewCount } from '../../shared/rarity.mjs';
 import {
-  COMBAT_STAT_KEYS,
   DUELS_TABLE,
   DUEL_TEAM_SIZE,
   FINAL_TABLE,
@@ -23,6 +22,7 @@ import {
   serializeArticleRow
 } from './articles.mjs';
 import { ensureUsersTable, serializePublicUser } from './auth.mjs';
+import { simulateRoleBattle } from './combat.mjs';
 
 let hasDuelsTableCache = false;
 
@@ -72,25 +72,6 @@ function normalizeTeamSnapshot(team) {
     ),
     defeated: Boolean(fighter.defeated)
   }));
-}
-
-function getStrongestCombatStat(stats) {
-  let strongestKey = COMBAT_STAT_KEYS[0];
-  let strongestValue = Number(stats?.[strongestKey] || 0);
-
-  for (const key of COMBAT_STAT_KEYS.slice(1)) {
-    const value = Number(stats?.[key] || 0);
-
-    if (value > strongestValue) {
-      strongestKey = key;
-      strongestValue = value;
-    }
-  }
-
-  return {
-    key: strongestKey,
-    value: strongestValue
-  };
 }
 
 function normalizeCombatStats(stats) {
@@ -150,9 +131,6 @@ function simulateDuelBattle(duelRow, rarityLevels, randomFn = Math.random) {
   const invitedTeam = normalizeTeamSnapshot(duelRow.invited_team).map((fighter) =>
     createFighterSnapshot(fighter, rarityLevels)
   );
-  const turns = [];
-  let turn = 1;
-
   const sides = {
     inviter: {
       key: 'inviter',
@@ -165,68 +143,25 @@ function simulateDuelBattle(duelRow, rarityLevels, randomFn = Math.random) {
       team: invitedTeam
     }
   };
-
-  const getAliveFighters = (team) => team.filter((fighter) => fighter.remainingHp > 0);
-  const runAttack = (attackerSide, defenderSide) => {
-    const aliveAttackers = getAliveFighters(attackerSide.team);
-    const aliveDefenders = getAliveFighters(defenderSide.team);
-
-    if (aliveAttackers.length === 0 || aliveDefenders.length === 0) {
-      return;
-    }
-
-    const attacker = aliveAttackers[Math.floor(randomFn() * aliveAttackers.length)];
-    const target = aliveDefenders[Math.floor(randomFn() * aliveDefenders.length)];
-    const strongestAttack = getStrongestCombatStat(attacker.stats);
-    const defenseValue = Number(target.stats?.[strongestAttack.key] || 0);
-    const damage = Math.max(1, strongestAttack.value - defenseValue);
-
-    target.remainingHp = Math.max(0, target.remainingHp - damage);
-    target.defeated = target.remainingHp <= 0;
-
-    turns.push({
-      turn,
-      attackerUserId: attackerSide.user.id,
-      attackerUsername: attackerSide.user.username,
-      attackerArticleId: attacker.id,
-      attackerTitle: attacker.title,
-      targetUserId: defenderSide.user.id,
-      targetUsername: defenderSide.user.username,
-      targetArticleId: target.id,
-      targetTitle: target.title,
-      statKey: strongestAttack.key,
-      attackValue: strongestAttack.value,
-      defenseValue,
-      damage,
-      targetRemainingHp: target.remainingHp
-    });
-
-    turn += 1;
-  };
-
-  while (getAliveFighters(inviterTeam).length > 0 && getAliveFighters(invitedTeam).length > 0) {
-    const firstPair = randomFn() < 0.5 ? [sides.inviter, sides.invited] : [sides.invited, sides.inviter];
-    const secondPair = firstPair[0].key === 'inviter' ? [sides.invited, sides.inviter] : [sides.inviter, sides.invited];
-
-    runAttack(firstPair[0], firstPair[1]);
-
-    if (getAliveFighters(firstPair[1].team).length === 0) {
-      break;
-    }
-
-    runAttack(secondPair[0], secondPair[1]);
-  }
-
-  const inviterAlive = getAliveFighters(inviterTeam).length;
-  const invitedAlive = getAliveFighters(invitedTeam).length;
-  const winnerKey =
-    inviterAlive === invitedAlive
-      ? turns[turns.length - 1]?.attackerUserId === inviterUser.id
-        ? 'inviter'
-        : 'invited'
-      : inviterAlive > 0
-        ? 'inviter'
-        : 'invited';
+  const battle = simulateRoleBattle({
+    battleMode: 'duel',
+    randomFn,
+    teams: [
+      {
+        key: 'inviter',
+        userId: inviterUser.id,
+        username: inviterUser.username,
+        actors: inviterTeam
+      },
+      {
+        key: 'invited',
+        userId: invitedUser.id,
+        username: invitedUser.username,
+        actors: invitedTeam
+      }
+    ]
+  });
+  const winnerKey = battle.winnerTeamKey === 'invited' ? 'invited' : 'inviter';
   const loserKey = winnerKey === 'inviter' ? 'invited' : 'inviter';
 
   return {
@@ -234,11 +169,8 @@ function simulateDuelBattle(duelRow, rarityLevels, randomFn = Math.random) {
     loserUserId: sides[loserKey].user.id,
     winnerUsername: sides[winnerKey].user.username,
     loserUsername: sides[loserKey].user.username,
-    turns,
-    teams: {
-      inviter: inviterTeam,
-      invited: invitedTeam
-    }
+    turns: battle.turns,
+    teams: battle.teams
   };
 }
 

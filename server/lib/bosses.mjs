@@ -6,7 +6,6 @@ import {
   BOSSES_TABLE,
   BOSS_HP_MULTIPLIER,
   BOSS_TEAM_SIZE,
-  COMBAT_STAT_KEYS,
   FINAL_TABLE,
   USER_ARTICLE_DROPS_TABLE,
   USERS_TABLE,
@@ -25,6 +24,7 @@ import {
   serializeArticleRow
 } from './articles.mjs';
 import { ensureUsersTable } from './auth.mjs';
+import { simulateRoleBattle } from './combat.mjs';
 
 let hasBossesTableCache = false;
 let hasBossCardDefeatsTableCache = false;
@@ -104,24 +104,6 @@ function resolveArticleCombatProfile(row, rarityLevels, forcedRarity = null) {
   return {
     rarity,
     stats
-  };
-}
-
-function getStrongestCombatStat(stats) {
-  let strongestKey = COMBAT_STAT_KEYS[0];
-  let strongestValue = Number(stats?.[strongestKey] || 0);
-
-  for (const key of COMBAT_STAT_KEYS.slice(1)) {
-    const value = Number(stats?.[key] || 0);
-    if (value > strongestValue) {
-      strongestKey = key;
-      strongestValue = value;
-    }
-  }
-
-  return {
-    key: strongestKey,
-    value: strongestValue
   };
 }
 
@@ -467,105 +449,29 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
       currentHp: Number(bossRow.remaining_hp)
     };
 
-    const rounds = [];
-    let turn = 1;
-
-    while (boss.currentHp > 0 && fighters.some((fighter) => fighter.currentHp > 0)) {
-      const aliveBeforeAttack = fighters.filter((fighter) => fighter.currentHp > 0);
-      const bossAttack = getStrongestCombatStat(boss.stats);
-      const bossTarget = aliveBeforeAttack[Math.floor(Math.random() * aliveBeforeAttack.length)];
-      const targetDefense = Number(bossTarget.stats?.[bossAttack.key] || 0);
-      const damageToTarget = Math.max(0, bossAttack.value - targetDefense);
-      bossTarget.currentHp = Math.max(0, bossTarget.currentHp - damageToTarget);
-
-      const round = {
-        turn,
-        bossAttack: {
-          targetId: bossTarget.id,
-          attackerTitle: boss.title,
-          targetTitle: bossTarget.title,
-          statKey: bossAttack.key,
-          attackValue: bossAttack.value,
-          defenseValue: targetDefense,
-          damage: damageToTarget,
-          targetRemainingHp: bossTarget.currentHp
+    const battle = simulateRoleBattle({
+      battleMode: 'boss',
+      randomFn: Math.random,
+      teams: [
+        {
+          key: 'players',
+          userId: Number(userId),
+          actors: fighters
         },
-        playerAttacks: []
-      };
-
-      const aliveAttackers = fighters.filter((fighter) => fighter.currentHp > 0);
-
-      if (aliveAttackers.length === 0) {
-        rounds.push(round);
-        break;
-      }
-
-      const attackProfiles = aliveAttackers.map((attacker) => {
-        const strongestAttack = getStrongestCombatStat(attacker.stats);
-        const bossDefenseValue = Number(boss.stats?.[strongestAttack.key] || 0);
-        const rawDamage = strongestAttack.value - bossDefenseValue;
-
-        return {
-          attacker,
-          strongestAttack,
-          bossDefenseValue,
-          rawDamage,
-          damage: Math.max(1, rawDamage)
-        };
-      });
-
-      const blockedAttackProfile = attackProfiles.reduce((bestProfile, currentProfile) => {
-        if (!bestProfile) {
-          return currentProfile;
+        {
+          key: 'boss',
+          isBoss: true,
+          actors: [boss]
         }
-
-        if (currentProfile.rawDamage > bestProfile.rawDamage) {
-          return currentProfile;
-        }
-
-        if (
-          currentProfile.rawDamage === bestProfile.rawDamage &&
-          currentProfile.strongestAttack.value > bestProfile.strongestAttack.value
-        ) {
-          return currentProfile;
-        }
-
-        return bestProfile;
-      }, null);
-      const blockedAttackId = blockedAttackProfile?.attacker.id ?? null;
-
-      for (const profile of attackProfiles) {
-        const { attacker, strongestAttack, bossDefenseValue } = profile;
-
-        if (boss.currentHp <= 0) {
-          break;
-        }
-
-        const isBlocked = blockedAttackId === attacker.id;
-        const damage = isBlocked ? 0 : profile.damage;
-
-        if (!isBlocked) {
-          boss.currentHp = Math.max(0, boss.currentHp - damage);
-        }
-
-        round.playerAttacks.push({
-          articleId: attacker.id,
-          title: attacker.title,
-          targetTitle: boss.title,
-          statKey: strongestAttack.key,
-          attackValue: strongestAttack.value,
-          defenseValue: bossDefenseValue,
-          blocked: isBlocked,
-          damage,
-          bossRemainingHp: boss.currentHp
-        });
-      }
-
-      rounds.push(round);
-      turn += 1;
-    }
-
-    const isVictory = boss.currentHp <= 0;
+      ]
+    });
+    const updatedBoss = battle.teams.boss?.[0] || {
+      ...boss,
+      remainingHp: boss.currentHp,
+      defeated: boss.currentHp <= 0
+    };
+    const updatedTeam = Array.isArray(battle.teams.players) ? battle.teams.players : [];
+    const isVictory = updatedBoss.remainingHp <= 0;
     const finalStatus = isVictory ? 'defeated' : 'alive';
 
     await client.query(
@@ -575,7 +481,7 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
             status = $2
         WHERE id = $3
       `,
-      [boss.currentHp, finalStatus, bossRow.id]
+      [updatedBoss.remainingHp, finalStatus, bossRow.id]
     );
 
     await recordBossCardCooldowns(Number(bossRow.id), Number(userId), uniqueArticleIds, client);
@@ -602,19 +508,11 @@ export async function performBossBattle(userId, selectedArticleIds, rarityLevels
         stats: boss.stats,
         bossRecordId: Number(bossRow.id),
         maxHp: boss.maxHp,
-        remainingHp: boss.currentHp,
+        remainingHp: updatedBoss.remainingHp,
         status: finalStatus
       },
-      team: fighters.map((fighter) => ({
-        id: fighter.id,
-        title: fighter.title,
-        rarity: fighter.rarity,
-        stats: fighter.stats,
-        maxHp: fighter.maxHp,
-        remainingHp: fighter.currentHp,
-        defeated: fighter.currentHp <= 0
-      })),
-      rounds,
+      team: updatedTeam,
+      rounds: battle.turns,
       cardCooldowns,
       unavailableArticleIds,
       grantedArticle: isVictory ? bossArticle : null

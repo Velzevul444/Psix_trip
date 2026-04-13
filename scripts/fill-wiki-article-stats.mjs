@@ -108,11 +108,11 @@ async function fillStageTable(client) {
       await writeCopyRow(copyStream, [
         row.id,
         stats.hp,
-        stats.stamina,
-        stats.strength,
-        stats.dexterity,
-        stats.intelligence,
-        stats.charisma
+        stats.stamina, //танк
+        stats.strength, //воин
+        stats.dexterity, //разбойник
+        stats.intelligence, //маг
+        stats.charisma //бард
       ]);
 
       processed += 1;

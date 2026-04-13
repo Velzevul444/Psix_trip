@@ -24,6 +24,11 @@ function CardStats({ card }) {
             <div className="stats-rarity-badge" style={{ backgroundColor: card.color }}>
               {card.name}
             </div>
+            {card.classLabel ? (
+              <div className="stats-class-badge">
+                Класс: {card.classLabel}
+              </div>
+            ) : null}
           </div>
 
           <div className="stats-list">

@@ -8,6 +8,7 @@ import {
   calculateTotalPower,
   formatCompactNumber,
   formatFullNumber,
+  resolveClassMeta,
   resolveArticleRarity,
   resolveArticleStats
 } from '../utils';
@@ -330,6 +331,7 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
           const rarityData = rarityLevels[rarity];
           const stats = resolveArticleStats(article, rarity);
           const totalPower = calculateTotalPower(stats);
+          const classMeta = resolveClassMeta({ ...article, stats, rarity }, rarityLevels);
 
           return (
             <article
@@ -346,7 +348,7 @@ function LibraryView({ mode, authUser, authToken, rarityLevels, onRarityLevelsCh
                 <div className="library-item-title-wrap">
                   <div className="library-item-title">{article.title}</div>
                   <div className="library-item-subtitle" style={{ color: rarityData.color }}>
-                    {rarityData.name}
+                    {rarityData.name} • {classMeta.label}
                   </div>
                 </div>
                 <div className="library-item-views">

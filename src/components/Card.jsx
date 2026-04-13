@@ -19,6 +19,11 @@ function Card({ card }) {
             <div className="card-rarity-badge" style={{ backgroundColor: card.color }}>
               {card.name}
             </div>
+            {card.classLabel ? (
+              <div className="card-class-badge">
+                Класс: {card.classLabel}
+              </div>
+            ) : null}
           </div>
 
           <div className="card-image-container">
