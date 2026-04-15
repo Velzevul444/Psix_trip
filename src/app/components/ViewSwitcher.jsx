@@ -8,6 +8,7 @@ function ViewSwitcher({
   onSwitchToCollection,
   onSwitchToBoss,
   onSwitchToDuel,
+  onSwitchToTrade,
   onSwitchToClans
 }) {
   return (
@@ -91,6 +92,19 @@ function ViewSwitcher({
           <line x1="5" x2="9" y1="14" y2="18" />
           <line x1="7" x2="4" y1="17" y2="20" />
           <line x1="3" x2="5" y1="19" y2="21" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`view-toggle trade-toggle ${viewMode === VIEW_MODES.TRADE ? 'active' : ''}`}
+        onClick={onSwitchToTrade}
+        aria-label="Показать экран обмена картами"
+      >
+        <svg className="view-icon-svg trade-icon-svg" viewBox="0 0 24 24" aria-hidden="true" strokeWidth={2}>
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+          <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
         </svg>
       </button>
 

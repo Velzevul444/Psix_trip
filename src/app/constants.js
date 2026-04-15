@@ -15,6 +15,8 @@ export const BOSS_TEAM_SIZE = 5;
 export const DUEL_TEAM_SEARCH_LIMIT = 24;
 export const DUEL_TEAM_SIZE = 5;
 export const DUEL_USER_SEARCH_MIN_LENGTH = 2;
+export const TRADE_CARD_SEARCH_LIMIT = 24;
+export const TRADE_USER_SEARCH_MIN_LENGTH = 2;
 export const CLAN_PAGE_SIZE = 24;
 export const CLAN_CHAT_MESSAGE_LIMIT = 80;
 export const CLAN_CHAT_POLL_MS = 5000;
@@ -25,6 +27,7 @@ export const VIEW_MODES = {
   COLLECTION: 'collection',
   BOSS: 'boss',
   DUEL: 'duel',
+  TRADE: 'trade',
   CLANS: 'clans'
 };
 export { RARITY_ORDER };
@@ -70,5 +73,12 @@ export const API_ENDPOINTS = {
   DUEL_INVITE: import.meta.env.VITE_DUEL_INVITE_ENDPOINT || '/api/duels/invite',
   DUEL_RESPOND: import.meta.env.VITE_DUEL_RESPOND_ENDPOINT || '/api/duels',
   DUEL_TEAM: import.meta.env.VITE_DUEL_TEAM_ENDPOINT || '/api/duels',
-  DUEL_LEAVE: import.meta.env.VITE_DUEL_LEAVE_ENDPOINT || '/api/duels'
+  DUEL_LEAVE: import.meta.env.VITE_DUEL_LEAVE_ENDPOINT || '/api/duels',
+  TRADE_STATE: import.meta.env.VITE_TRADE_STATE_ENDPOINT || '/api/trades/state',
+  TRADE_USERS: import.meta.env.VITE_TRADE_USERS_ENDPOINT || '/api/trades/users',
+  TRADE_INVITE: import.meta.env.VITE_TRADE_INVITE_ENDPOINT || '/api/trades/invite',
+  TRADE_RESPOND: import.meta.env.VITE_TRADE_RESPOND_ENDPOINT || '/api/trades',
+  TRADE_OFFER: import.meta.env.VITE_TRADE_OFFER_ENDPOINT || '/api/trades',
+  TRADE_CONFIRM: import.meta.env.VITE_TRADE_CONFIRM_ENDPOINT || '/api/trades',
+  TRADE_LEAVE: import.meta.env.VITE_TRADE_LEAVE_ENDPOINT || '/api/trades'
 };

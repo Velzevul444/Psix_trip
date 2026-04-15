@@ -427,6 +427,108 @@ export async function leaveCurrentDuelRequest(duelId, authToken) {
   return data;
 }
 
+export async function fetchTradeState(authToken) {
+  const response = await fetch(API_ENDPOINTS.TRADE_STATE, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to load trade state: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function searchTradeUsers(search, authToken) {
+  const params = new URLSearchParams({ search });
+  const response = await fetch(`${API_ENDPOINTS.TRADE_USERS}?${params.toString()}`, {
+    headers: buildAuthHeaders(authToken)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to search trade players: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function sendTradeInvite(payload, authToken) {
+  const response = await fetch(API_ENDPOINTS.TRADE_INVITE, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify(payload)
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to send trade invite: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function respondToTradeInvite(tradeId, action, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.TRADE_RESPOND}/${tradeId}/respond`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ action })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to respond to trade invite: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function submitTradeOfferSelection(tradeId, articleId, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.TRADE_OFFER}/${tradeId}/offer`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({ articleId })
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to submit trade offer: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function confirmTradeOfferRequest(tradeId, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.TRADE_CONFIRM}/${tradeId}/confirm`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({})
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to confirm trade offer: ${response.status}`);
+  }
+
+  return data;
+}
+
+export async function leaveCurrentTradeRequest(tradeId, authToken) {
+  const response = await fetch(`${API_ENDPOINTS.TRADE_LEAVE}/${tradeId}/leave`, {
+    method: 'POST',
+    headers: buildAuthHeaders(authToken, true),
+    body: JSON.stringify({})
+  });
+  const data = await readJson(response);
+
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to leave trade: ${response.status}`);
+  }
+
+  return data;
+}
+
 export async function fetchPageSummary(title) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 5000);

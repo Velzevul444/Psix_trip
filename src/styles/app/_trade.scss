@@ -1,0 +1,200 @@
+.trade-invite-banner {
+  border-color: rgba(102, 188, 255, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(102, 188, 255, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    rgba(10, 17, 20, 0.9);
+}
+
+.duel-invite-banner + .trade-invite-banner {
+  top: calc(10.9rem + env(safe-area-inset-top));
+}
+
+.trade-screen-shell {
+  border-color: rgba(102, 188, 255, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(102, 188, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 30%),
+    linear-gradient(145deg, rgba(17, 19, 24, 0.94), rgba(10, 12, 16, 0.92));
+}
+
+.trade-summary-panel .duel-participant-card-me {
+  border-color: rgba(102, 188, 255, 0.24);
+  background:
+    radial-gradient(circle at top right, rgba(102, 188, 255, 0.14), transparent 40%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.trade-main-panel {
+  justify-content: stretch;
+}
+
+.trade-panel-body,
+.trade-result-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 0;
+  flex: 1;
+}
+
+.trade-offer-board,
+.trade-result-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: stretch;
+}
+
+.trade-result-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trade-offer-link {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  padding: 0.85rem 0.8rem;
+  border-radius: 22px;
+  border: 1px solid rgba(102, 188, 255, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(102, 188, 255, 0.14), transparent 42%),
+    rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.trade-offer-link span {
+  color: var(--text-3);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.trade-offer-link strong {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  letter-spacing: -0.04em;
+}
+
+.trade-offer-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-height: 150px;
+  padding: 0.92rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    rgba(255, 255, 255, 0.03);
+}
+
+.trade-offer-slot.mine {
+  border-color: rgba(102, 188, 255, 0.18);
+}
+
+.trade-offer-slot.opponent {
+  border-color: rgba(247, 203, 119, 0.18);
+}
+
+.trade-offer-slot.empty {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.trade-offer-slot strong {
+  margin-top: 0.16rem;
+  font-family: 'Unbounded', sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  letter-spacing: -0.04em;
+}
+
+.trade-offer-slot em,
+.trade-offer-slot i {
+  font-style: normal;
+}
+
+.trade-offer-slot em {
+  color: var(--text-2);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.trade-offer-slot i {
+  margin-top: auto;
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+
+.trade-offer-slot.filled.mine i {
+  color: #66bcff;
+}
+
+.trade-offer-slot.filled.opponent i {
+  color: #f7cb77;
+}
+
+.trade-offer-label {
+  color: var(--text-3);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.trade-search-results {
+  max-height: 320px;
+}
+
+.trade-candidate {
+  align-items: flex-start;
+  border-color: rgba(102, 188, 255, 0.14);
+}
+
+.trade-candidate.selected {
+  border-color: rgba(102, 188, 255, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(102, 188, 255, 0.16), transparent 42%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.trade-action-row {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.view-toggle.trade-toggle.active {
+  color: #081113;
+  background: linear-gradient(135deg, #66bcff, #9ae8ff);
+  box-shadow: 0 14px 28px rgba(102, 188, 255, 0.24);
+}
+
+@media (max-width: 1100px) {
+  .duel-invite-banner + .trade-invite-banner {
+    top: auto;
+    bottom: calc(7.4rem + env(safe-area-inset-bottom));
+  }
+
+  .trade-offer-board,
+  .trade-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trade-offer-link {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .trade-action-row {
+    flex-direction: column;
+  }
+}

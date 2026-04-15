@@ -33,6 +33,15 @@ import {
   submitDuelTeam
 } from './lib/duels.mjs';
 import {
+  confirmTradeOffer,
+  createTradeInvitation,
+  createTradeInvitationByUsername,
+  leaveTrade,
+  loadUserTradeState,
+  respondToTradeInvitation,
+  submitTradeOffer
+} from './lib/trades.mjs';
+import {
   createClanMessage,
   createClan,
   joinClan,
@@ -193,6 +202,45 @@ export function createAppServer() {
         return;
       }
 
+      if (request.method === 'GET' && url.pathname === '/api/trades/state') {
+        const currentUser = await getCurrentUser(request);
+        const rarityLevels = createRarityLevels();
+        const result = await loadUserTradeState(currentUser.id, rarityLevels);
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/trades/users') {
+        const currentUser = await getCurrentUser(request);
+        const result = await searchUsersByUsername(
+          url.searchParams.get('search'),
+          currentUser.id
+        );
+
+        sendJson(response, 200, result);
+        return;
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/trades/invite') {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const rarityLevels = createRarityLevels();
+        const targetUserId = Number(body.targetUserId);
+        const result = Number.isInteger(targetUserId) && targetUserId > 0
+          ? await createTradeInvitation(currentUser.id, targetUserId, rarityLevels)
+          : await createTradeInvitationByUsername(currentUser.id, body.username, rarityLevels);
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
       if (request.method === 'GET' && url.pathname === '/api/duels/users') {
         const currentUser = await getCurrentUser(request);
         const result = await searchUsersByUsername(
@@ -258,6 +306,80 @@ export function createAppServer() {
           body.articleIds,
           rarityLevels
         );
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
+      const tradeRespondMatch =
+        request.method === 'POST'
+          ? url.pathname.match(/^\/api\/trades\/(\d+)\/respond$/)
+          : null;
+
+      if (tradeRespondMatch) {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const rarityLevels = createRarityLevels();
+        const result = await respondToTradeInvitation(
+          currentUser.id,
+          tradeRespondMatch[1],
+          body.action,
+          rarityLevels
+        );
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
+      const tradeLeaveMatch =
+        request.method === 'POST' ? url.pathname.match(/^\/api\/trades\/(\d+)\/leave$/) : null;
+
+      if (tradeLeaveMatch) {
+        const currentUser = await getCurrentUser(request);
+        const rarityLevels = createRarityLevels();
+        const result = await leaveTrade(currentUser.id, tradeLeaveMatch[1], rarityLevels);
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
+      const tradeOfferMatch =
+        request.method === 'POST' ? url.pathname.match(/^\/api\/trades\/(\d+)\/offer$/) : null;
+
+      if (tradeOfferMatch) {
+        const currentUser = await getCurrentUser(request);
+        const body = await readJsonBody(request);
+        const rarityLevels = createRarityLevels();
+        const result = await submitTradeOffer(
+          currentUser.id,
+          tradeOfferMatch[1],
+          body.articleId,
+          rarityLevels
+        );
+
+        sendJson(response, 200, {
+          ...result,
+          rarityLevels
+        });
+        return;
+      }
+
+      const tradeConfirmMatch =
+        request.method === 'POST' ? url.pathname.match(/^\/api\/trades\/(\d+)\/confirm$/) : null;
+
+      if (tradeConfirmMatch) {
+        const currentUser = await getCurrentUser(request);
+        const rarityLevels = createRarityLevels();
+        const result = await confirmTradeOffer(currentUser.id, tradeConfirmMatch[1], rarityLevels);
 
         sendJson(response, 200, {
           ...result,

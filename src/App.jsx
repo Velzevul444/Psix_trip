@@ -1,12 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { buildRarityLevels, DEFAULT_RARITY_THRESHOLDS } from '../shared/rarity.mjs';
-import { fetchCurrentUser, fetchDuelState, respondToDuelInvite } from './app/api';
+import {
+  fetchCurrentUser,
+  fetchDuelState,
+  fetchTradeState,
+  respondToDuelInvite,
+  respondToTradeInvite
+} from './app/api';
 import AppSideMenu from './app/components/AppSideMenu';
 import BossView from './app/components/BossView';
 import ClanView from './app/components/ClanView';
 import DuelView from './app/components/DuelView';
 import LibraryView from './app/components/LibraryView';
 import PackView from './app/components/PackView';
+import TradeView from './app/components/TradeView';
 import ViewSwitcher from './app/components/ViewSwitcher';
 import { VIEW_MODES } from './app/constants';
 import { readStoredAuthToken, storeAuthToken } from './app/utils';
@@ -22,10 +29,14 @@ function App() {
   const [collectionRefreshToken, setCollectionRefreshToken] = useState(0);
   const [bossRefreshToken, setBossRefreshToken] = useState(0);
   const [duelRefreshToken, setDuelRefreshToken] = useState(0);
+  const [tradeRefreshToken, setTradeRefreshToken] = useState(0);
   const [clanRefreshToken, setClanRefreshToken] = useState(0);
   const [duelState, setDuelState] = useState(null);
   const [duelBannerError, setDuelBannerError] = useState('');
   const [isDuelInviteResponding, setIsDuelInviteResponding] = useState(false);
+  const [tradeState, setTradeState] = useState(null);
+  const [tradeBannerError, setTradeBannerError] = useState('');
+  const [isTradeInviteResponding, setIsTradeInviteResponding] = useState(false);
   const recentTitlesRef = useRef({
     set: new Set(),
     queue: []
@@ -101,6 +112,39 @@ function App() {
     };
   }, [authToken, authUser, duelRefreshToken]);
 
+  useEffect(() => {
+    if (!authToken || !authUser) {
+      setTradeState(null);
+      setTradeBannerError('');
+      setIsTradeInviteResponding(false);
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const loadTradeStatus = async () => {
+      try {
+        const payload = await fetchTradeState(authToken);
+
+        if (!isCancelled) {
+          setTradeState(payload.trade || null);
+        }
+      } catch {
+        if (!isCancelled) {
+          setTradeState(null);
+        }
+      }
+    };
+
+    loadTradeStatus();
+    const intervalId = window.setInterval(loadTradeStatus, 12000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [authToken, authUser, tradeRefreshToken]);
+
   const handleRarityLevelsChange = (nextLevels) => {
     setRarityLevels(buildRarityLevels(nextLevels || DEFAULT_RARITY_THRESHOLDS));
   };
@@ -111,6 +155,7 @@ function App() {
     storeAuthToken(token);
     setCollectionRefreshToken((current) => current + 1);
     setDuelRefreshToken((current) => current + 1);
+    setTradeRefreshToken((current) => current + 1);
     setClanRefreshToken((current) => current + 1);
   };
 
@@ -118,12 +163,20 @@ function App() {
     setAuthToken('');
     setAuthUser(null);
     setDuelState(null);
+    setTradeState(null);
     setDuelBannerError('');
+    setTradeBannerError('');
     storeAuthToken('');
     setCollectionRefreshToken((current) => current + 1);
+    setTradeRefreshToken((current) => current + 1);
     setClanRefreshToken((current) => current + 1);
 
-    if (viewMode === VIEW_MODES.COLLECTION || viewMode === VIEW_MODES.DUEL || viewMode === VIEW_MODES.CLANS) {
+    if (
+      viewMode === VIEW_MODES.COLLECTION ||
+      viewMode === VIEW_MODES.DUEL ||
+      viewMode === VIEW_MODES.TRADE ||
+      viewMode === VIEW_MODES.CLANS
+    ) {
       setViewMode(VIEW_MODES.PACKS);
     }
   };
@@ -135,6 +188,9 @@ function App() {
     }
     if (nextMode === VIEW_MODES.DUEL) {
       setDuelRefreshToken((current) => current + 1);
+    }
+    if (nextMode === VIEW_MODES.TRADE) {
+      setTradeRefreshToken((current) => current + 1);
     }
     if (nextMode === VIEW_MODES.CLANS) {
       setClanRefreshToken((current) => current + 1);
@@ -164,8 +220,33 @@ function App() {
     }
   };
 
+  const handleTradeInviteAction = async (action) => {
+    if (!tradeState?.id || !authToken) {
+      return;
+    }
+
+    setIsTradeInviteResponding(true);
+    setTradeBannerError('');
+
+    try {
+      const payload = await respondToTradeInvite(tradeState.id, action, authToken);
+      setTradeState(payload.trade || null);
+      setTradeRefreshToken((current) => current + 1);
+
+      if (action === 'accept') {
+        setViewMode(VIEW_MODES.TRADE);
+      }
+    } catch (error) {
+      setTradeBannerError(error.message || 'Не удалось ответить на приглашение на обмен.');
+    } finally {
+      setIsTradeInviteResponding(false);
+    }
+  };
+
   const incomingDuelInvite =
     duelState?.status === 'pending' && duelState?.isIncomingInvite ? duelState : null;
+  const incomingTradeInvite =
+    tradeState?.status === 'pending' && tradeState?.isIncomingInvite ? tradeState : null;
 
   return (
     <div className={`App app-view-${viewMode}`}>
@@ -180,6 +261,7 @@ function App() {
         onSwitchToCollection={() => switchView(VIEW_MODES.COLLECTION)}
         onSwitchToBoss={() => switchView(VIEW_MODES.BOSS)}
         onSwitchToDuel={() => switchView(VIEW_MODES.DUEL)}
+        onSwitchToTrade={() => switchView(VIEW_MODES.TRADE)}
         onSwitchToClans={() => switchView(VIEW_MODES.CLANS)}
       />
 
@@ -215,6 +297,43 @@ function App() {
               disabled={isDuelInviteResponding}
             >
               {isDuelInviteResponding ? 'Обрабатываем...' : 'Принять'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {incomingTradeInvite ? (
+        <div className="duel-invite-banner trade-invite-banner" role="status" aria-live="polite">
+          <div className="duel-invite-banner-copy">
+            <div className="library-kicker">Обмен</div>
+            <strong>{incomingTradeInvite.inviter.username} приглашает тебя на обмен 1v1</strong>
+            <span>Каждый игрок кладёт по одной карте в слот, обе стороны подтверждают и сервер меняет карты местами.</span>
+            {tradeBannerError ? <em>{tradeBannerError}</em> : null}
+          </div>
+
+          <div className="duel-invite-banner-actions">
+            <button
+              type="button"
+              className="library-more-btn"
+              onClick={() => switchView(VIEW_MODES.TRADE)}
+            >
+              Открыть
+            </button>
+            <button
+              type="button"
+              className="duel-invite-btn duel-invite-btn-muted"
+              onClick={() => handleTradeInviteAction('decline')}
+              disabled={isTradeInviteResponding}
+            >
+              Отклонить
+            </button>
+            <button
+              type="button"
+              className="auth-submit-btn duel-invite-btn"
+              onClick={() => handleTradeInviteAction('accept')}
+              disabled={isTradeInviteResponding}
+            >
+              {isTradeInviteResponding ? 'Обрабатываем...' : 'Принять'}
             </button>
           </div>
         </div>
@@ -313,6 +432,21 @@ function App() {
             onRarityLevelsChange={handleRarityLevelsChange}
             refreshToken={duelRefreshToken}
             onDuelRefresh={() => setDuelRefreshToken((current) => current + 1)}
+          />
+        </div>
+
+        <div
+          className={`app-view-panel ${viewMode === VIEW_MODES.TRADE ? 'is-active' : ''}`}
+          aria-hidden={viewMode !== VIEW_MODES.TRADE}
+        >
+          <TradeView
+            authToken={authToken}
+            authUser={authUser}
+            rarityLevels={rarityLevels}
+            onRarityLevelsChange={handleRarityLevelsChange}
+            refreshToken={tradeRefreshToken}
+            onTradeRefresh={() => setTradeRefreshToken((current) => current + 1)}
+            onCollectionRefresh={() => setCollectionRefreshToken((current) => current + 1)}
           />
         </div>
 
