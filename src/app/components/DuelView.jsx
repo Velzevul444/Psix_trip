@@ -9,6 +9,7 @@ import {
   submitDuelTeamSelection
 } from '../api';
 import {
+  DUEL_STATE_POLL_MS,
   DUEL_TEAM_SEARCH_LIMIT,
   DUEL_TEAM_SIZE,
   DUEL_USER_SEARCH_MIN_LENGTH
@@ -25,6 +26,7 @@ import DuelMobileView from './DuelMobileView';
 function DuelView({
   authUser,
   authToken,
+  isActive = false,
   rarityLevels,
   onRarityLevelsChange,
   refreshToken,
@@ -53,17 +55,20 @@ function DuelView({
   const [activeTab, setActiveTab] = useState('team');
   const inviteSearchRequestIdRef = useRef(0);
   const teamSearchRequestIdRef = useRef(0);
+  const syncedDuelIdRef = useRef(null);
   const isMobileViewport = useIsMobileViewport();
 
-  const loadState = async () => {
+  const loadState = async ({ silent = false } = {}) => {
     if (!authToken || !authUser) {
       setDuelState(null);
       setDuelError('');
       return;
     }
 
-    setIsDuelLoading(true);
-    setDuelError('');
+    if (!silent) {
+      setIsDuelLoading(true);
+      setDuelError('');
+    }
 
     try {
       const payload = await fetchDuelState(authToken);
@@ -74,10 +79,14 @@ function DuelView({
 
       setDuelState(payload.duel || null);
     } catch (error) {
-      setDuelState(null);
-      setDuelError(error.message || 'Не удалось загрузить дуэль.');
+      if (!silent) {
+        setDuelState(null);
+        setDuelError(error.message || 'Не удалось загрузить дуэль.');
+      }
     } finally {
-      setIsDuelLoading(false);
+      if (!silent) {
+        setIsDuelLoading(false);
+      }
     }
   };
 
@@ -86,8 +95,39 @@ function DuelView({
   }, [authToken, authUser, refreshToken]);
 
   useEffect(() => {
-    setSelectedTeam(Array.isArray(duelState?.myTeam) ? duelState.myTeam : []);
-  }, [duelState?.id, duelState?.status, duelState?.updatedAt]);
+    if (!duelState) {
+      syncedDuelIdRef.current = null;
+      setSelectedTeam([]);
+      return;
+    }
+
+    const nextTeam = Array.isArray(duelState.myTeam) ? duelState.myTeam : [];
+    const duelChanged = syncedDuelIdRef.current !== duelState.id;
+    syncedDuelIdRef.current = duelState.id;
+
+    if (
+      duelChanged ||
+      duelState.status !== 'active' ||
+      duelState.myTeamSubmitted ||
+      selectedTeam.length === 0
+    ) {
+      setSelectedTeam(nextTeam);
+    }
+  }, [duelState?.id, duelState?.status, duelState?.updatedAt, duelState?.myTeamSubmitted, selectedTeam.length]);
+
+  useEffect(() => {
+    if (!authToken || !authUser || !isActive) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadState({ silent: true });
+    }, DUEL_STATE_POLL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [authToken, authUser, isActive]);
 
   useEffect(() => {
     if (duelState?.battleResult) {

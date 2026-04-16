@@ -14,6 +14,7 @@ import {
   CLAN_CHAT_MESSAGE_LIMIT,
   CLAN_CHAT_MESSAGE_MAX_LENGTH,
   CLAN_CHAT_POLL_MS,
+  CLAN_STATE_POLL_MS,
   CLAN_PAGE_SIZE
 } from '../constants';
 import useIsMobileViewport from '../hooks/useIsMobileViewport';
@@ -78,7 +79,7 @@ function ClanView({ authUser, authToken, isActive = false, refreshToken, onClanR
   const shouldStickChatToBottomRef = useRef(true);
   const isMobileViewport = useIsMobileViewport();
 
-  const loadClanState = async () => {
+  const loadClanState = async ({ silent = false } = {}) => {
     if (!authToken || !authUser) {
       setClan(null);
       setClanError('');
@@ -86,23 +87,43 @@ function ClanView({ authUser, authToken, isActive = false, refreshToken, onClanR
       return;
     }
 
-    setIsClanLoading(true);
-    setClanError('');
+    if (!silent) {
+      setIsClanLoading(true);
+      setClanError('');
+    }
 
     try {
       const payload = await fetchClanState(authToken);
       setClan(payload.clan || null);
     } catch (error) {
-      setClan(null);
-      setClanError(error.message || 'Не удалось загрузить состояние клана.');
+      if (!silent) {
+        setClan(null);
+        setClanError(error.message || 'Не удалось загрузить состояние клана.');
+      }
     } finally {
-      setIsClanLoading(false);
+      if (!silent) {
+        setIsClanLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void loadClanState();
   }, [authToken, authUser, refreshToken]);
+
+  useEffect(() => {
+    if (!authToken || !authUser || !isActive) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadClanState({ silent: true });
+    }, CLAN_STATE_POLL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [authToken, authUser, isActive]);
 
   useEffect(() => {
     if (!authUser || clan || activeTab !== 'join') {

@@ -428,6 +428,7 @@ function App() {
           <DuelView
             authToken={authToken}
             authUser={authUser}
+            isActive={viewMode === VIEW_MODES.DUEL}
             rarityLevels={rarityLevels}
             onRarityLevelsChange={handleRarityLevelsChange}
             refreshToken={duelRefreshToken}
@@ -442,6 +443,7 @@ function App() {
           <TradeView
             authToken={authToken}
             authUser={authUser}
+            isActive={viewMode === VIEW_MODES.TRADE}
             rarityLevels={rarityLevels}
             onRarityLevelsChange={handleRarityLevelsChange}
             refreshToken={tradeRefreshToken}

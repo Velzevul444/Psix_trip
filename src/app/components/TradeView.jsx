@@ -9,7 +9,11 @@ import {
   sendTradeInvite,
   submitTradeOfferSelection
 } from '../api';
-import { TRADE_CARD_SEARCH_LIMIT, TRADE_USER_SEARCH_MIN_LENGTH } from '../constants';
+import {
+  TRADE_CARD_SEARCH_LIMIT,
+  TRADE_STATE_POLL_MS,
+  TRADE_USER_SEARCH_MIN_LENGTH
+} from '../constants';
 import { formatCompactNumber, resolveClassMeta, resolveArticleRarity } from '../utils';
 
 function describeTradeArticle(article, rarityLevels) {
@@ -28,6 +32,7 @@ function describeTradeArticle(article, rarityLevels) {
 function TradeView({
   authUser,
   authToken,
+  isActive = false,
   rarityLevels,
   onRarityLevelsChange,
   refreshToken,
@@ -58,15 +63,17 @@ function TradeView({
   const cardSearchRequestIdRef = useRef(0);
   const completedTradeIdRef = useRef(null);
 
-  const loadState = async () => {
+  const loadState = async ({ silent = false } = {}) => {
     if (!authToken || !authUser) {
       setTradeState(null);
       setTradeError('');
       return;
     }
 
-    setIsTradeLoading(true);
-    setTradeError('');
+    if (!silent) {
+      setIsTradeLoading(true);
+      setTradeError('');
+    }
 
     try {
       const payload = await fetchTradeState(authToken);
@@ -77,16 +84,34 @@ function TradeView({
 
       setTradeState(payload.trade || null);
     } catch (error) {
-      setTradeState(null);
-      setTradeError(error.message || 'Не удалось загрузить обмен.');
+      if (!silent) {
+        setTradeState(null);
+        setTradeError(error.message || 'Не удалось загрузить обмен.');
+      }
     } finally {
-      setIsTradeLoading(false);
+      if (!silent) {
+        setIsTradeLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void loadState();
   }, [authToken, authUser, refreshToken]);
+
+  useEffect(() => {
+    if (!authToken || !authUser || !isActive) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadState({ silent: true });
+    }, TRADE_STATE_POLL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [authToken, authUser, isActive]);
 
   useEffect(() => {
     if (
@@ -214,7 +239,7 @@ function TradeView({
     };
 
     void loadCardCandidates();
-  }, [authToken, authUser, cardSearchQuery, tradeState?.status, onRarityLevelsChange]);
+  }, [authToken, authUser, cardSearchQuery, tradeState?.status]);
 
   const selectedOfferId = Number(tradeState?.myOffer?.id || 0);
   const orderedCardCandidates = [

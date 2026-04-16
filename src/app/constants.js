@@ -15,11 +15,14 @@ export const BOSS_TEAM_SIZE = 5;
 export const DUEL_TEAM_SEARCH_LIMIT = 24;
 export const DUEL_TEAM_SIZE = 5;
 export const DUEL_USER_SEARCH_MIN_LENGTH = 2;
+export const DUEL_STATE_POLL_MS = 5000;
 export const TRADE_CARD_SEARCH_LIMIT = 24;
 export const TRADE_USER_SEARCH_MIN_LENGTH = 2;
+export const TRADE_STATE_POLL_MS = 5000;
 export const CLAN_PAGE_SIZE = 24;
 export const CLAN_CHAT_MESSAGE_LIMIT = 80;
 export const CLAN_CHAT_POLL_MS = 5000;
+export const CLAN_STATE_POLL_MS = 5000;
 export const CLAN_CHAT_MESSAGE_MAX_LENGTH = 600;
 export const VIEW_MODES = {
   PACKS: 'packs',
