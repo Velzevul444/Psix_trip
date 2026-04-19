@@ -15,6 +15,8 @@ import {
   TRADE_USER_SEARCH_MIN_LENGTH
 } from '../constants';
 import { formatCompactNumber, resolveClassMeta, resolveArticleRarity } from '../utils';
+import useIsMobileViewport from '../hooks/useIsMobileViewport';
+import TradeMobileView from './TradeMobileView';
 
 function describeTradeArticle(article, rarityLevels) {
   if (!article) {
@@ -62,6 +64,7 @@ function TradeView({
   const inviteSearchRequestIdRef = useRef(0);
   const cardSearchRequestIdRef = useRef(0);
   const completedTradeIdRef = useRef(null);
+  const isMobileViewport = useIsMobileViewport();
 
   const loadState = async ({ silent = false } = {}) => {
     if (!authToken || !authUser) {
@@ -734,6 +737,52 @@ function TradeView({
           <div className="library-status">Войди в аккаунт, чтобы обмениваться картами с другими игроками.</div>
         </div>
       </section>
+    );
+  }
+
+  if (isMobileViewport) {
+    return (
+      <TradeMobileView
+        rarityLevels={rarityLevels}
+        tradeError={tradeError}
+        isTradeLoading={isTradeLoading}
+        tradeState={tradeState}
+        showInviteSearchPanel={showInviteSearchPanel}
+        isTradeCompleted={isTradeCompleted}
+        isTradeCancelled={isTradeCancelled}
+        inviteSearchInput={inviteSearchInput}
+        onInviteSearchInputChange={(nextValue) => {
+          setInviteSearchInput(nextValue);
+          setInviteActionError('');
+        }}
+        inviteSearchQuery={inviteSearchQuery}
+        inviteResults={inviteResults}
+        isInviteSearchLoading={isInviteSearchLoading}
+        inviteSearchError={inviteSearchError}
+        inviteActionError={inviteActionError}
+        isInviteSubmitting={isInviteSubmitting}
+        isInviteResponding={isInviteResponding}
+        isLeavingTrade={isLeavingTrade}
+        onInvite={(user) => void handleInvite(user)}
+        onRespondToInvite={(action) => void handleRespondToInvite(action)}
+        onLeaveTrade={() => void handleLeaveTrade()}
+        cardSearchInput={cardSearchInput}
+        onCardSearchInputChange={(nextValue) => {
+          setCardSearchInput(nextValue);
+          setOfferActionError('');
+        }}
+        cardSearchQuery={cardSearchQuery}
+        selectedOfferId={selectedOfferId}
+        orderedCardCandidates={orderedCardCandidates}
+        isCardLoading={isCardLoading}
+        cardError={cardError}
+        offerActionError={offerActionError}
+        isOfferSubmitting={isOfferSubmitting}
+        isConfirmingOffer={isConfirmingOffer}
+        onSelectOffer={(articleId) => void handleSelectOffer(articleId)}
+        onClearOffer={() => void handleClearOffer()}
+        onConfirmOffer={() => void handleConfirmOffer()}
+      />
     );
   }
 
